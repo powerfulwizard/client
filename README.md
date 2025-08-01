@@ -1,3 +1,3 @@
 # PowerfulWizard Automated Mouse Clicker
 
-[https://powerfulwizard.org](powerfulwizard.org)
+<a href="https://powerfulwizard.org">powerfulwizard.org</a>
