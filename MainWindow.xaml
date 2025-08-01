@@ -1,0 +1,55 @@
+﻿<Window x:Class="PowerfulWizard.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Powerful Wizard v1.0.1" Height="360" Width="360" ResizeMode="CanMinimize"
+        Background="#1E1E1E">
+    <Window.Resources>
+        <Style x:Key="ButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#333333"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#555555"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.6"/>
+                    <Setter Property="Foreground" Value="#CCCCCC"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="10" Background="#1E1E1E">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="162"/> <!-- Matches Start button width -->
+            <ColumnDefinition Width="Auto"/> <!-- Spacer for alignment -->
+            <ColumnDefinition Width="162"/> <!-- Matches Stop button width -->
+        </Grid.ColumnDefinitions>
+        
+        <Label Content="Interval (ms):" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Foreground="#FFFFFF" Margin="0,0,0,10"/>
+        <TextBox x:Name="IntervalInput" Grid.Row="0" Grid.Column="2" Width="100" Margin="5,0,0,10" Text="1000" PreviewTextInput="OnPreviewTextInput" TextChanged="OnTextChanged" Background="#2D2D2D" Foreground="#FFFFFF" BorderBrush="#555555"/>
+        
+        <Label Content="Max Deviation (ms):" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Foreground="#FFFFFF" Margin="0,0,0,10"/>
+        <TextBox x:Name="DeviationInput" Grid.Row="1" Grid.Column="2" Width="100" Margin="5,0,0,10" Text="100" PreviewTextInput="OnPreviewTextInput" TextChanged="OnTextChanged" Background="#2D2D2D" Foreground="#FFFFFF" BorderBrush="#555555"/>
+        
+        <Label x:Name="StatusLabel" Content="Status: Stopped" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Foreground="#FFFFFF" Margin="0,0,0,10" HorizontalAlignment="Center"/>
+        <Label x:Name="NextClickLabel" Content="Next Click: -- ms" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" Foreground="#FFFFFF" Margin="0,0,0,10" HorizontalAlignment="Center"/>
+        
+        <Button x:Name="StartButton" Content="Start" Grid.Row="3" Grid.Column="0" Width="162" Height="100" Margin="0,10,5,0" Style="{StaticResource ButtonStyle}" Click="OnStartButtonClick"/>
+        <Button x:Name="StopButton" Content="Stop" Grid.Row="3" Grid.Column="2" Width="162" Height="100" Margin="5,10,0,0" Style="{StaticResource ButtonStyle}" IsEnabled="False" Click="OnStopButtonClick"/>
+        
+        <Label x:Name="StartHotkeyLabel" Content="Hotkey: Ctrl+Shift+S" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Foreground="#FFFFFF" Margin="0,5,0,0" HorizontalAlignment="Center"/>
+        <Label x:Name="StopHotkeyLabel" Content="Hotkey: Ctrl+Shift+P" Grid.Row="4" Grid.Column="2" VerticalAlignment="Center" Foreground="#FFFFFF" Margin="0,5,0,0" HorizontalAlignment="Center"/>
+        
+        <Button x:Name="SettingsButton" Content="Settings" Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="3" Width="80" Height="40" Margin="0,10,0,0" Style="{StaticResource ButtonStyle}" Click="OnSettingsButtonClick"/>
+    </Grid>
+</Window>

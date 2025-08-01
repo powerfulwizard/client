@@ -1,0 +1,49 @@
+# .NET Build Output
+bin/
+obj/
+
+# Visual Studio / Rider IDE Files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+.idea/
+
+# NuGet Packages
+*.nupkg
+packages/
+*.nuget.props
+*.nuget.targets
+
+# User-Specific Configuration
+*.csproj.user
+PowerfulWizardAutoClicker.exe.config
+
+# Temporary Files
+*.cache
+*.log
+*.tmp
+*.bak
+*.swp
+
+# OS-Specific Files
+.DS_Store
+Thumbs.db
+
+# Test and Coverage Files
+*.trx
+*.coverage
+TestResults/
+
+# Ignore local debug and release folders
+**/Debug/
+**/Release/
+
+# Keep essential files (explicitly include if needed, but these are typically not ignored)
+!*.csproj
+!*.xaml
+!*.cs
+!*.ico
+!App.xaml
+!favicon.ico
