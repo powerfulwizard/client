@@ -2,6 +2,14 @@
 
 A powerful and feature-rich auto clicker with advanced sequence support, visual overlays, and smooth mouse trails for Windows.
 
+## Screenshots
+
+### Main Interface
+![Main Window](images/main-window.png)
+
+### Sequence Configurator
+![Sequence Configurator](images/sequence-configurator.png)
+
 ## 🚀 Key Features
 
 ### 🖱️ **Advanced Auto Clicking**
