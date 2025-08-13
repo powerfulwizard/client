@@ -1,0 +1,13 @@
+<Window x:Class="PowerfulWizard.ClickAreaWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Select Click Area" AllowsTransparency="True" WindowStyle="None"
+        Background="Transparent" Topmost="True" ShowInTaskbar="False"
+        WindowState="Maximized">
+    <Canvas x:Name="DrawingCanvas" Background="#01FFFFFF" 
+            MouseLeftButtonDown="OnCanvasMouseDown" 
+            MouseMove="OnCanvasMouseMove" 
+            MouseLeftButtonUp="OnCanvasMouseUp">
+        <Rectangle x:Name="SelectionRectangle" Stroke="Red" StrokeThickness="2" Fill="#20FF0000"/>
+    </Canvas>
+</Window>

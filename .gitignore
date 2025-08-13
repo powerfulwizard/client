@@ -40,10 +40,14 @@ TestResults/
 **/Debug/
 **/Release/
 
-# Keep essential files (explicitly include if needed, but these are typically not ignored)
+# Keep essential files
 !*.csproj
 !*.xaml
 !*.cs
 !*.ico
 !App.xaml
 !favicon.ico
+!ClickAreaWindow.xaml
+!ClickAreaWindow.xaml.cs
+!OverlayWindow.xaml
+!OverlayWindow.xaml.cs
