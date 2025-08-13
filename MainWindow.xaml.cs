@@ -42,6 +42,16 @@ namespace PowerfulWizard
         private const int MIN_MOVEMENT_DURATION_MS = 100;
         private const int MAX_MOVEMENT_DURATION_MS = 250;
         private const int MOVEMENT_STEPS = 10;
+        
+        public enum ClickType
+        {
+            LeftClick,
+            RightClick,
+            MiddleClick,
+            DoubleClick
+        }
+        
+        private ClickType currentClickType = ClickType.LeftClick;
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
@@ -89,6 +99,10 @@ namespace PowerfulWizard
         private const int INPUT_MOUSE = 0;
         private const int MOUSEEVENTF_LEFTDOWN = 0x0002;
         private const int MOUSEEVENTF_LEFTUP = 0x0004;
+        private const int MOUSEEVENTF_RIGHTDOWN = 0x0008;
+        private const int MOUSEEVENTF_RIGHTUP = 0x0010;
+        private const int MOUSEEVENTF_MIDDLEDOWN = 0x0020;
+        private const int MOUSEEVENTF_MIDDLEUP = 0x0040;
 
         public MainWindow()
         {
@@ -115,6 +129,7 @@ namespace PowerfulWizard
                 double width = double.TryParse(ConfigurationManager.AppSettings["ClickAreaWidth"], out double cw) ? cw : 100;
                 double height = double.TryParse(ConfigurationManager.AppSettings["ClickAreaHeight"], out double ch) ? ch : 100;
                 clickArea = new Rect(x, y, width, height);
+                currentClickType = Enum.TryParse(ConfigurationManager.AppSettings["ClickType"], out ClickType clickType) ? clickType : ClickType.LeftClick;
             }
             catch
             {
@@ -124,10 +139,13 @@ namespace PowerfulWizard
                 stopHotkeyKey = VK_P;
                 useRandomPosition = false;
                 clickArea = new Rect(0, 0, 100, 100);
+                currentClickType = ClickType.LeftClick;
             }
 
             UseRandomPositionCheck.IsChecked = useRandomPosition;
             SetClickAreaButton.IsEnabled = useRandomPosition;
+            ClickTypeComboBox.SelectedIndex = (int)currentClickType;
+            
             if (clickArea.Width > 0 && clickArea.Height > 0)
             {
                 overlayWindow = new OverlayWindow(clickArea);
@@ -200,6 +218,15 @@ namespace PowerfulWizard
             return text.ToString();
         }
 
+        private void OnClickTypeChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ClickTypeComboBox?.SelectedIndex >= 0)
+            {
+                currentClickType = (ClickType)ClickTypeComboBox.SelectedIndex;
+                SaveSettings();
+            }
+        }
+
         private void OnSettingsButtonClick(object sender, RoutedEventArgs e)
         {
             var settingsWindow = new SettingsWindow(this, startHotkeyModifiers, startHotkeyKey, stopHotkeyModifiers, stopHotkeyKey);
@@ -247,11 +274,13 @@ namespace PowerfulWizard
                 config.AppSettings.Settings.Remove("ClickAreaY");
                 config.AppSettings.Settings.Remove("ClickAreaWidth");
                 config.AppSettings.Settings.Remove("ClickAreaHeight");
+                config.AppSettings.Settings.Remove("ClickType");
                 config.AppSettings.Settings.Add("UseRandomPosition", useRandomPosition.ToString());
                 config.AppSettings.Settings.Add("ClickAreaX", clickArea.X.ToString());
                 config.AppSettings.Settings.Add("ClickAreaY", clickArea.Y.ToString());
                 config.AppSettings.Settings.Add("ClickAreaWidth", clickArea.Width.ToString());
                 config.AppSettings.Settings.Add("ClickAreaHeight", clickArea.Height.ToString());
+                config.AppSettings.Settings.Add("ClickType", currentClickType.ToString());
                 config.Save(ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection("appSettings");
             }
@@ -435,11 +464,32 @@ namespace PowerfulWizard
 
         private void PerformMouseClick()
         {
+            switch (currentClickType)
+            {
+                case ClickType.LeftClick:
+                    PerformSingleClick(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP);
+                    break;
+                case ClickType.RightClick:
+                    PerformSingleClick(MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP);
+                    break;
+                case ClickType.MiddleClick:
+                    PerformSingleClick(MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP);
+                    break;
+                case ClickType.DoubleClick:
+                    PerformSingleClick(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP);
+                    System.Threading.Thread.Sleep(50); // Short delay between clicks
+                    PerformSingleClick(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP);
+                    break;
+            }
+        }
+
+        private void PerformSingleClick(uint downFlag, uint upFlag)
+        {
             INPUT[] inputs = new INPUT[2];
             inputs[0].type = INPUT_MOUSE;
-            inputs[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+            inputs[0].mi.dwFlags = downFlag;
             inputs[1].type = INPUT_MOUSE;
-            inputs[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
+            inputs[1].mi.dwFlags = upFlag;
             uint result = SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
             if (result != 2)
             {
