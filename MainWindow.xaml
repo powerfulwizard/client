@@ -1,7 +1,7 @@
 ﻿<Window x:Class="PowerfulWizard.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Powerful Wizard v1.0.1" Height="440" Width="360"
+        Title="Powerful Wizard v1.0.2" Height="440" Width="360"
         Background="#1E1E1E" Foreground="#FFFFFF">
     <Grid Margin="10">
         <Grid.RowDefinitions>
