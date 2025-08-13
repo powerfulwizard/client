@@ -1,0 +1,17 @@
+<Window x:Class="PowerfulWizard.SequenceVisualOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Sequence Visual Overlay" 
+        Height="100" Width="100"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        WindowState="Maximized">
+    
+    <Canvas x:Name="OverlayCanvas" Background="Transparent">
+        <!-- Step areas will be added here dynamically -->
+    </Canvas>
+</Window>

@@ -1,0 +1,111 @@
+<Window x:Class="PowerfulWizard.SequenceTestWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Sequence Test" Height="300" Width="500"
+        Background="#1E1E1E" Foreground="#FFFFFF"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize">
+    
+    <Window.Resources>
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Background" Value="#333333"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#555555"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#444444"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#555555"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Sequence Info -->
+        <TextBlock Grid.Row="0" x:Name="SequenceNameText" 
+                   Text="Testing Sequence: " FontSize="16" FontWeight="Bold" 
+                   Foreground="#FFFFFF" Margin="0,0,0,10"/>
+
+        <!-- Progress Bar -->
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <ProgressBar Grid.Column="0" x:Name="ProgressBar" Height="20" 
+                         Background="#333333" Foreground="#4CAF50"/>
+            <TextBlock Grid.Column="1" x:Name="ProgressText" 
+                       Text="0/0" Margin="10,0,0,0" VerticalAlignment="Center" 
+                       Foreground="#FFFFFF"/>
+        </Grid>
+
+        <!-- Current Step Info -->
+        <Border Grid.Row="2" Background="#2A2A2A" BorderBrush="#555555" 
+                BorderThickness="1" Padding="15" Margin="0,0,0,10" CornerRadius="3">
+            <StackPanel>
+                <TextBlock Text="Current Step:" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,5"/>
+                <TextBlock x:Name="CurrentStepText" Text="--" Foreground="#CCCCCC"/>
+                <TextBlock x:Name="CurrentStepDetails" Text="--" Foreground="#888888" FontSize="12"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Loop Info -->
+        <Border Grid.Row="3" Background="#2A2A2A" BorderBrush="#555555" 
+                BorderThickness="1" Padding="15" Margin="0,0,0,10" CornerRadius="3">
+            <StackPanel>
+                <TextBlock Text="Loop Progress:" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,5"/>
+                <TextBlock x:Name="LoopProgressText" Text="--" Foreground="#CCCCCC"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Next Action Info -->
+        <Border Grid.Row="4" Background="#2A2A2A" BorderBrush="#555555" 
+                BorderThickness="1" Padding="15" Margin="0,0,0,10" CornerRadius="3">
+            <StackPanel>
+                <TextBlock Text="Next Action:" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,5"/>
+                <TextBlock x:Name="NextActionText" Text="--" Foreground="#CCCCCC"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Status -->
+        <TextBlock Grid.Row="5" x:Name="StatusText" Text="Ready to start..." 
+                   Foreground="#4CAF50" VerticalAlignment="Center" HorizontalAlignment="Center" 
+                   FontSize="14" FontWeight="Bold"/>
+
+        <!-- Control Buttons -->
+        <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
+            <Button x:Name="StartButton" Content="Start Test" Style="{StaticResource ModernButton}"
+                    Click="OnStartTestClick"/>
+            <Button x:Name="StopButton" Content="Stop Test" Style="{StaticResource ModernButton}"
+                    Click="OnStopTestClick" IsEnabled="False"/>
+        </StackPanel>
+    </Grid>
+</Window>

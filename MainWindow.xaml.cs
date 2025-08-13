@@ -8,6 +8,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
+using PowerfulWizard.Models;
+using PowerfulWizard.Services;
 
 namespace PowerfulWizard
 {
@@ -42,6 +44,14 @@ namespace PowerfulWizard
         private const int MIN_MOVEMENT_DURATION_MS = 100;
         private const int MAX_MOVEMENT_DURATION_MS = 250;
         private const int MOVEMENT_STEPS = 10;
+        
+        // Sequence functionality
+        private SequenceRunner sequenceRunner;
+        private Sequence currentSequence;
+        private bool isSequenceMode = false;
+        
+        // Mouse trail functionality
+        private GlobalMouseTrailWindow globalMouseTrailWindow;
         
         public enum ClickType
         {
@@ -114,8 +124,24 @@ namespace PowerfulWizard
             countdownTimer.Tick += OnCountdownTimerTick;
             movementTimer = new DispatcherTimer();
             movementTimer.Tick += OnMovementTimerTick;
+            
+            // Initialize sequence runner
+            sequenceRunner = new SequenceRunner();
+            sequenceRunner.ProgressChanged += OnSequenceProgressChanged;
+            sequenceRunner.SequenceCompleted += OnSequenceCompleted;
+            sequenceRunner.StepExecuted += OnSequenceStepExecuted;
+            sequenceRunner.CountdownTick += OnSequenceCountdownTick;
+            sequenceRunner.MovementStarted += OnSequenceMovementStarted;
+            
+            // Initialize global mouse trail window
+            globalMouseTrailWindow = new GlobalMouseTrailWindow();
+            globalMouseTrailWindow.Show();
+            
             Loaded += OnWindowLoaded;
             Closing += OnWindowClosing;
+            
+            // Add mouse movement tracking for trails
+            MouseMove += OnMouseMove;
 
             try
             {
@@ -151,6 +177,8 @@ namespace PowerfulWizard
                 overlayWindow = new OverlayWindow(clickArea);
                 overlayWindow.Show();
             }
+            
+            // Global mouse trail window is already initialized
         }
 
         private void OnWindowLoaded(object sender, RoutedEventArgs e)
@@ -173,6 +201,8 @@ namespace PowerfulWizard
             UnregisterHotKey(hWnd, HOTKEY_ID_START);
             UnregisterHotKey(hWnd, HOTKEY_ID_STOP);
             overlayWindow?.Close();
+            globalMouseTrailWindow?.Close();
+            sequenceRunner?.StopSequence();
         }
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -231,6 +261,33 @@ namespace PowerfulWizard
         {
             var settingsWindow = new SettingsWindow(this, startHotkeyModifiers, startHotkeyKey, stopHotkeyModifiers, stopHotkeyKey);
             settingsWindow.ShowDialog();
+            
+            // Reload mouse trail settings after settings change
+            globalMouseTrailWindow?.RefreshSettings();
+        }
+        
+        private void OnMouseMove(object sender, MouseEventArgs e)
+        {
+            // Mouse tracking is now handled globally by GlobalMouseTrailWindow
+        }
+
+        private void OnSequenceButtonClick(object sender, RoutedEventArgs e)
+        {
+            // Debug: Show what currentSequence contains
+            string debugInfo = currentSequence == null ? "null" : $"'{currentSequence.Name}' with {currentSequence.Steps.Count} steps";
+            System.Diagnostics.Debug.WriteLine($"Opening configurator with sequence: {debugInfo}");
+            
+            var sequenceWindow = new SequenceConfiguratorWindow(currentSequence);
+            if (sequenceWindow.ShowDialog() == true)
+            {
+                currentSequence = sequenceWindow.CurrentSequence;
+                isSequenceMode = true;
+                
+                // Update UI to show sequence mode
+                StatusLabel.Content = $"Status: Sequence Mode - {currentSequence.Name}";
+                StartButton.Content = "Start Sequence";
+                StopButton.Content = "Stop Sequence";
+            }
         }
 
         private void OnUseRandomPositionChecked(object sender, RoutedEventArgs e)
@@ -292,44 +349,71 @@ namespace PowerfulWizard
 
         private void OnStartButtonClick(object sender, RoutedEventArgs e)
         {
-            if (int.TryParse(IntervalInput.Text, out int interval) && interval >= 100)
+            if (isSequenceMode)
             {
-                if (useRandomPosition && (clickArea.Width <= 0 || clickArea.Height <= 0))
+                if (currentSequence == null || currentSequence.Steps.Count == 0)
                 {
-                    MessageBox.Show("Please set a valid click area for random position.", "Invalid Click Area");
+                    MessageBox.Show("Please configure a sequence with at least one step.", "No Sequence");
                     return;
                 }
+                
                 StartButton.IsEnabled = false;
                 StopButton.IsEnabled = true;
-                StatusLabel.Content = "Status: Running";
-                nextClickTime = DateTime.Now.AddMilliseconds(interval);
-                timer.Interval = TimeSpan.FromMilliseconds(interval);
-                timer.Start();
-                countdownTimer.Start();
-                if (overlayWindow != null)
-                {
-                    overlayWindow.SetRunning(true);
-                }
+                sequenceRunner.StartSequence(currentSequence);
             }
             else
             {
-                MessageBox.Show("Please enter a valid interval (≥100 ms).", "Invalid Input");
+                if (int.TryParse(IntervalInput.Text, out int interval) && interval >= 100)
+                {
+                    if (useRandomPosition && (clickArea.Width <= 0 || clickArea.Height <= 0))
+                    {
+                        MessageBox.Show("Please set a valid click area for random position.", "Invalid Click Area");
+                        return;
+                    }
+                    StartButton.IsEnabled = false;
+                    StopButton.IsEnabled = true;
+                    StatusLabel.Content = "Status: Running";
+                    nextClickTime = DateTime.Now.AddMilliseconds(interval);
+                    timer.Interval = TimeSpan.FromMilliseconds(interval);
+                    timer.Start();
+                    countdownTimer.Start();
+                    if (overlayWindow != null)
+                    {
+                        overlayWindow.SetRunning(true);
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Please enter a valid interval (≥100 ms).", "Invalid Input");
+                }
             }
         }
 
         private void OnStopButtonClick(object sender, RoutedEventArgs e)
         {
-            timer.Stop();
-            countdownTimer.Stop();
-            movementTimer.Stop();
-            StartButton.IsEnabled = true;
-            StopButton.IsEnabled = false;
-            StatusLabel.Content = "Status: Stopped";
-            NextClickLabel.Content = "Next Click: -- ms";
-            MovementSpeedLabel.Content = "Movement Speed: -- ms";
-            if (overlayWindow != null)
+            if (isSequenceMode)
             {
-                overlayWindow.SetRunning(false);
+                sequenceRunner.StopSequence();
+                StartButton.IsEnabled = true;
+                StopButton.IsEnabled = false;
+                StatusLabel.Content = "Status: Sequence Stopped";
+                NextClickLabel.Content = "Next Click: -- ms";
+                MovementSpeedLabel.Content = "Movement Speed: -- ms";
+            }
+            else
+            {
+                timer.Stop();
+                countdownTimer.Stop();
+                movementTimer.Stop();
+                StartButton.IsEnabled = true;
+                StopButton.IsEnabled = false;
+                StatusLabel.Content = "Status: Stopped";
+                NextClickLabel.Content = "Next Click: -- ms";
+                MovementSpeedLabel.Content = "Movement Speed: -- ms";
+                if (overlayWindow != null)
+                {
+                    overlayWindow.SetRunning(false);
+                }
             }
             
             // Focus the window when stopping
@@ -408,6 +492,7 @@ namespace PowerfulWizard
                 // Only log actual failures, not spam every movement
                 Console.WriteLine($"SetCursorPos failed at t={t:F2}: Error={GetLastError()}");
             }
+            // Trail points are now handled globally by GlobalMouseTrailWindow
 
             currentStep++;
         }
@@ -508,6 +593,80 @@ namespace PowerfulWizard
             {
                 textBox.Text = "0";
             }
+        }
+
+        // Sequence event handlers
+        private void OnSequenceProgressChanged(object sender, SequenceProgressEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (e.TotalLoops > 0)
+                {
+                    StatusLabel.Content = $"Status: Sequence Running - Loop {e.CurrentLoop + 1}/{e.TotalLoops}";
+                }
+                else if (e.TotalLoops == -1)
+                {
+                    StatusLabel.Content = $"Status: Sequence Running - Loop {e.CurrentLoop + 1} (infinite)";
+                }
+                else
+                {
+                    StatusLabel.Content = "Status: Sequence Running";
+                }
+                
+                var timeUntilNext = e.NextActionTime - DateTime.Now;
+                if (timeUntilNext.TotalMilliseconds > 0)
+                {
+                    NextClickLabel.Content = $"Next Action: {timeUntilNext.TotalMilliseconds:F0} ms";
+                }
+            });
+        }
+
+        private void OnSequenceCompleted(object sender, SequenceCompletedEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                StatusLabel.Content = $"Status: Sequence Completed - {e.TotalLoops} loops, {e.TotalSteps} steps";
+                StartButton.IsEnabled = true;
+                StopButton.IsEnabled = false;
+                StartButton.Content = "Start Sequence"; // Keep sequence mode UI
+                StopButton.Content = "Stop Sequence";
+                NextClickLabel.Content = "Next Click: -- ms";
+                MovementSpeedLabel.Content = "Movement Speed: -- ms";
+                // DON'T reset sequence mode or clear currentSequence - keep it for reuse
+                // isSequenceMode = false;
+                // currentSequence = null;
+            });
+        }
+
+        private void OnSequenceStepExecuted(object sender, SequenceStepEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                NextClickLabel.Content = $"Last Action: {e.Step.Description} ({e.Step.ClickType}) - {e.ActualDelay}ms";
+            });
+        }
+        
+        private void OnSequenceCountdownTick(object sender, SequenceCountdownEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (e.MillisecondsRemaining > 0)
+                {
+                    NextClickLabel.Content = $"Next Action: {Math.Ceiling(e.MillisecondsRemaining)} ms";
+                }
+                else
+                {
+                    NextClickLabel.Content = "Next Action: 0 ms";
+                }
+            });
+        }
+        
+        private void OnSequenceMovementStarted(object sender, MovementStartedEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                MovementSpeedLabel.Content = $"Movement Speed: {e.MovementDurationMs} ms";
+            });
         }
     }
 }
