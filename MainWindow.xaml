@@ -2,12 +2,14 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:PowerfulWizard"
-        Title="{x:Static local:VersionInfo.AppTitle}" Height="480" Width="360"
+        Title="{x:Static local:VersionInfo.AppTitle}" Height="600" Width="360"
         Background="#1E1E1E" Foreground="#FFFFFF">
     <Grid>
         <!-- Main Content Grid -->
         <Grid Margin="10">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -105,31 +107,108 @@
                 <ComboBoxItem Content="Double Click"/>
             </ComboBox>
             
-            <CheckBox x:Name="UseRandomPositionCheck" Content="Use Random Position" Grid.Row="3" Grid.Column="0" 
+            <!-- Movement Speed Settings -->
+            <Label Content="Movement Speed:" Grid.Row="3" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
+            <ComboBox x:Name="MovementSpeedComboBox" Grid.Row="3" Grid.Column="1" Margin="0,0,0,10" 
+                      Background="#333333" Foreground="#FFFFFF" SelectionChanged="OnMovementSpeedChanged"
+                      BorderBrush="#555555">
+                <ComboBox.Style>
+                    <Style TargetType="ComboBox">
+                        <Setter Property="Background" Value="#333333"/>
+                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                        <Setter Property="BorderBrush" Value="#555555"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ComboBox">
+                                    <Grid>
+                                        <ToggleButton Name="ToggleButton" Background="#333333" BorderBrush="#555555" 
+                                                      Foreground="#FFFFFF" BorderThickness="1"
+                                                      IsChecked="{Binding Path=IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                                      ClickMode="Press">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition />
+                                                    <ColumnDefinition Width="20" />
+                                                </Grid.ColumnDefinitions>
+                                                <ContentPresenter Name="ContentSite" IsHitTestVisible="False" 
+                                                                  Content="{TemplateBinding SelectionBoxItem}"
+                                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                                  ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                                  Margin="3,3,23,3" VerticalAlignment="Stretch" 
+                                                                  HorizontalAlignment="Left" />
+                                                <TextBlock Grid.Column="1" Text="▼" HorizontalAlignment="Center" 
+                                                           VerticalAlignment="Center" Foreground="#FFFFFF"/>
+                                            </Grid>
+                                        </ToggleButton>
+                                        <Popup Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" 
+                                               AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
+                                            <Grid Name="DropDown" SnapsToDevicePixels="True" 
+                                                  MinWidth="{TemplateBinding ActualWidth}" MaxHeight="200">
+                                                <Border Background="#333333" BorderThickness="1" BorderBrush="#555555"/>
+                                                <ScrollViewer Margin="4,6,4,6" SnapsToDevicePixels="True">
+                                                    <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
+                                                </ScrollViewer>
+                                            </Grid>
+                                        </Popup>
+                                    </Grid>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ComboBox.Style>
+                <ComboBox.Resources>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="Background" Value="#333333"/>
+                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                        <Setter Property="BorderBrush" Value="#555555"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter Property="Background" Value="#555555"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#444444"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ComboBox.Resources>
+                <ComboBoxItem Content="Fast"/>
+                <ComboBoxItem Content="Medium" IsSelected="True"/>
+                <ComboBoxItem Content="Slow"/>
+                <ComboBoxItem Content="Custom"/>
+            </ComboBox>
+            
+            <Label Content="Custom Speed (ms):" Grid.Row="4" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
+            <TextBox x:Name="CustomSpeedInput" Text="150" Grid.Row="4" Grid.Column="1" Margin="0,0,0,10" 
+                     PreviewTextInput="OnPreviewTextInput" TextChanged="OnTextChanged" 
+                     Background="#333333" Foreground="#FFFFFF" IsEnabled="False"/>
+            
+            <CheckBox x:Name="UseRandomPositionCheck" Content="Use Random Position" Grid.Row="5" Grid.Column="0" 
                       Grid.ColumnSpan="2" Margin="0,0,0,10" Foreground="#FFFFFF" Checked="OnUseRandomPositionChecked" 
                       Unchecked="OnUseRandomPositionChecked"/>
             
-            <Button x:Name="SetClickAreaButton" Content="Set Click Area" Grid.Row="4" Grid.Column="0" 
+            <Button x:Name="SetClickAreaButton" Content="Set Click Area" Grid.Row="6" Grid.Column="0" 
                     Grid.ColumnSpan="2" Margin="0,0,0,10" IsEnabled="False" Click="OnSetClickAreaClick" 
-                    Background="#333333" Foreground="#FFFFFF"/>
+                    Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
             
-            <Label x:Name="StartHotkeyLabel" Content="Hotkey: Ctrl+Shift+S" Grid.Row="5" Grid.Column="0" 
+            <Label x:Name="StartHotkeyLabel" Content="Hotkey: Ctrl+Shift+S" Grid.Row="7" Grid.Column="0" 
                    Margin="0,0,5,0" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
-            <Label x:Name="StopHotkeyLabel" Content="Hotkey: Ctrl+Shift+P" Grid.Row="5" Grid.Column="1" 
+            <Label x:Name="StopHotkeyLabel" Content="Hotkey: Ctrl+Shift+P" Grid.Row="7" Grid.Column="1" 
                    Margin="5,0,0,0" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
             
-            <Button x:Name="StartButton" Content="Start" Grid.Row="6" Grid.Column="0" Width="162" Height="100" 
-                    Margin="0,0,5,10" Click="OnStartButtonClick" Background="#333333" Foreground="#FFFFFF"/>
-            <Button x:Name="StopButton" Content="Stop" Grid.Row="6" Grid.Column="1" Width="162" Height="100" 
-                    Margin="5,0,0,10" Click="OnStopButtonClick" IsEnabled="False" Background="#333333" Foreground="#FFFFFF"/>
+            <Button x:Name="StartButton" Content="Start" Grid.Row="8" Grid.Column="0" Width="162" Height="100" 
+                    Margin="0,0,5,10" Click="OnStartButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
+            <Button x:Name="StopButton" Content="Stop" Grid.Row="8" Grid.Column="1" Width="162" Height="100" 
+                    Margin="5,0,0,10" Click="OnStopButtonClick" IsEnabled="False" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
             
-            <Label x:Name="StatusLabel" Content="Status: Stopped" Grid.Row="7" Grid.Column="0" 
+            <Label x:Name="StatusLabel" Content="Status: Stopped" Grid.Row="9" Grid.Column="0" 
                    Grid.ColumnSpan="2" Margin="0,0,0,10" Foreground="#FFFFFF"/>
             
-            <Label x:Name="NextClickLabel" Content="Next Click: -- ms" Grid.Row="8" Grid.Column="0" 
+            <Label x:Name="NextClickLabel" Content="Next Click: -- ms" Grid.Row="10" Grid.Column="0" 
                    Grid.ColumnSpan="2" Margin="0,0,0,10" Foreground="#FFFFFF"/>
             
-            <Grid Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,10">
+            <Grid Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -138,9 +217,9 @@
                 <Label x:Name="MovementSpeedLabel" Content="Movement Speed: -- ms" Grid.Column="0" 
                        Margin="0,0,5,0" Foreground="#FFFFFF"/>
                 <Button x:Name="SequenceButton" Content="Sequences" Grid.Column="1" Width="80" Height="40" 
-                        Margin="5,0,0,0" Click="OnSequenceButtonClick" Background="#333333" Foreground="#FFFFFF"/>
+                        Margin="5,0,0,0" Click="OnSequenceButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
                 <Button x:Name="SettingsButton" Content="Settings" Grid.Column="2" Width="80" Height="40" 
-                        Margin="5,0,0,0" Click="OnSettingsButtonClick" Background="#333333" Foreground="#FFFFFF"/>
+                        Margin="5,0,0,0" Click="OnSettingsButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
             </Grid>
         </Grid>
         

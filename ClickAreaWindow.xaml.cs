@@ -1,4 +1,3 @@
-using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -21,7 +20,7 @@ namespace PowerfulWizard
             SelectionRectangle.Visibility = Visibility.Hidden;
         }
 
-        private void OnCanvasMouseDown(object sender, MouseButtonEventArgs e)
+        private void OnCanvasMouseDown(object? sender, MouseButtonEventArgs e)
         {
             if (e.ButtonState == MouseButtonState.Pressed && e.ChangedButton == MouseButton.Left)
             {
@@ -37,7 +36,7 @@ namespace PowerfulWizard
             }
         }
 
-        private void OnCanvasMouseMove(object sender, MouseEventArgs e)
+        private void OnCanvasMouseMove(object? sender, MouseEventArgs e)
         {
             if (isDrawing)
             {
@@ -54,7 +53,7 @@ namespace PowerfulWizard
             }
         }
 
-        private void OnCanvasMouseUp(object sender, MouseButtonEventArgs e)
+        private void OnCanvasMouseUp(object? sender, MouseButtonEventArgs e)
         {
             if (isDrawing && e.ChangedButton == MouseButton.Left)
             {

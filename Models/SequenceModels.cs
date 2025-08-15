@@ -1,19 +1,13 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Collections.Generic;
+using System.Xml.Serialization;
+using System.IO;
 
 namespace PowerfulWizard.Models
 {
-    public enum LoopMode
-    {
-        Once,
-        Forever,
-        Count
-    }
-
     public enum ClickType
     {
         LeftClick,
@@ -22,15 +16,31 @@ namespace PowerfulWizard.Models
         DoubleClick
     }
 
+    public enum LoopMode
+    {
+        Once,
+        Forever,
+        Count
+    }
+
+    public enum MovementSpeed
+    {
+        Fast,      // ~80-120ms
+        Medium,    // ~120-200ms  
+        Slow,      // ~200-300ms
+        Custom     // User-defined
+    }
+
     public class SequenceStep : INotifyPropertyChanged
     {
         private ClickType _clickType;
         private int _delayMs;
         private int _deviationMs;
-        private int _movementDurationMs;
+        private MovementSpeed _movementSpeed;
+        private int _customMovementDurationMs;
         private bool _useRandomPosition;
         private Rect _clickArea;
-        private string _description;
+        private string _description = string.Empty;
 
         public ClickType ClickType
         {
@@ -50,10 +60,16 @@ namespace PowerfulWizard.Models
             set => SetProperty(ref _deviationMs, value);
         }
 
-        public int MovementDurationMs
+        public MovementSpeed MovementSpeed
         {
-            get => _movementDurationMs;
-            set => SetProperty(ref _movementDurationMs, value);
+            get => _movementSpeed;
+            set => SetProperty(ref _movementSpeed, value);
+        }
+
+        public int CustomMovementDurationMs
+        {
+            get => _customMovementDurationMs;
+            set => SetProperty(ref _customMovementDurationMs, value);
         }
 
         public bool UseRandomPosition
@@ -79,20 +95,21 @@ namespace PowerfulWizard.Models
             ClickType = ClickType.LeftClick;
             DelayMs = 1000;
             DeviationMs = 100;
-            MovementDurationMs = 150; // Default movement duration
+            MovementSpeed = MovementSpeed.Medium;
+            CustomMovementDurationMs = 150;
             UseRandomPosition = false;
             ClickArea = new Rect(0, 0, 100, 100);
             Description = "New Step";
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
+        protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
         {
             if (EqualityComparer<T>.Default.Equals(field, value)) return false;
             field = value;
@@ -103,8 +120,8 @@ namespace PowerfulWizard.Models
 
     public class Sequence : INotifyPropertyChanged
     {
-        private string _name;
-        private ObservableCollection<SequenceStep> _steps;
+        private string _name = string.Empty;
+        private ObservableCollection<SequenceStep> _steps = null!;
         private LoopMode _loopMode;
         private int _loopCount;
         private bool _isRunning;
@@ -148,19 +165,38 @@ namespace PowerfulWizard.Models
             IsRunning = false;
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
+        protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
         {
             if (EqualityComparer<T>.Default.Equals(field, value)) return false;
             field = value;
             OnPropertyChanged(propertyName);
             return true;
+        }
+        
+        public void SaveToFile(string filePath)
+        {
+            var serializer = new XmlSerializer(typeof(Sequence));
+            using var writer = new StreamWriter(filePath);
+            serializer.Serialize(writer, this);
+        }
+        
+        public static Sequence LoadFromFile(string filePath)
+        {
+            var serializer = new XmlSerializer(typeof(Sequence));
+            using var reader = new StreamReader(filePath);
+            var result = serializer.Deserialize(reader) as Sequence;
+            if (result == null)
+            {
+                throw new InvalidOperationException("Failed to deserialize sequence from file.");
+            }
+            return result;
         }
     }
 }

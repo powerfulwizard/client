@@ -1,12 +1,9 @@
-using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using PowerfulWizard.Models;
 using System.Windows.Media;
-using PowerfulWizard;
 
 namespace PowerfulWizard.Services
 {
@@ -15,14 +12,14 @@ namespace PowerfulWizard.Services
         private DispatcherTimer _sequenceTimer;
         private DispatcherTimer _movementTimer;
         private DispatcherTimer _countdownTimer;
-        private Random _random = new Random();
-        private Sequence _currentSequence;
+        private readonly Random _random = Random.Shared;
+        private Sequence? _currentSequence;
         private int _currentStepIndex = 0;
         private int _currentLoop = 0;
         private int _totalLoops = 0;
         private bool _isRunning = false;
         private DateTime _nextActionTime;
-        private SequenceVisualOverlayWindow _overlayWindow;
+        private SequenceVisualOverlayWindow? _overlayWindow;
         private int _pendingStepDelay;
         
         // Movement-related fields
@@ -32,15 +29,22 @@ namespace PowerfulWizard.Services
         private int _movementSteps;
         private int _currentStep;
         private int _movementDuration;
+        private List<double> _speedIntervals = new();
         private const int MIN_MOVEMENT_DURATION_MS = 100;
         private const int MAX_MOVEMENT_DURATION_MS = 250;
         private const int MOVEMENT_STEPS = 10;
+        
+        // Enhanced movement speed randomization
+        private const int MIN_BASE_DURATION_MS = 80;
+        private const int MAX_BASE_DURATION_MS = 300;
+        private const double SPEED_VARIATION_FACTOR = 0.3; // 30% speed variation within movement
+        private const double DISTANCE_SPEED_FACTOR = 0.15; // Distance affects speed by 15%
 
-        public event EventHandler<SequenceProgressEventArgs> ProgressChanged;
-        public event EventHandler<SequenceCompletedEventArgs> SequenceCompleted;
-        public event EventHandler<SequenceStepEventArgs> StepExecuted;
-        public event EventHandler<SequenceCountdownEventArgs> CountdownTick;
-        public event EventHandler<MovementStartedEventArgs> MovementStarted;
+        public event EventHandler<SequenceProgressEventArgs>? ProgressChanged;
+        public event EventHandler<SequenceCompletedEventArgs>? SequenceCompleted;
+        public event EventHandler<SequenceStepEventArgs>? StepExecuted;
+        public event EventHandler<SequenceCountdownEventArgs>? CountdownTick;
+        public event EventHandler<MovementStartedEventArgs>? MovementStarted;
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
@@ -137,7 +141,7 @@ namespace PowerfulWizard.Services
             _sequenceTimer.Stop();
             _movementTimer.Stop();
             _countdownTimer.Stop();
-            _currentSequence = null;
+            _currentSequence = null!;
             
             // Hide the visual overlay
             HideOverlay();
@@ -151,8 +155,11 @@ namespace PowerfulWizard.Services
                 HideOverlay();
                 
                 // Create and show new overlay
-                _overlayWindow = new SequenceVisualOverlayWindow(_currentSequence);
-                _overlayWindow.Show();
+                if (_currentSequence != null)
+                {
+                    _overlayWindow = new SequenceVisualOverlayWindow(_currentSequence);
+                    _overlayWindow.Show();
+                }
             }
             catch (Exception ex)
             {
@@ -168,7 +175,7 @@ namespace PowerfulWizard.Services
                 if (_overlayWindow != null)
                 {
                     _overlayWindow.Close();
-                    _overlayWindow = null;
+                    _overlayWindow = null!;
                 }
             }
             catch (Exception ex)
@@ -194,7 +201,7 @@ namespace PowerfulWizard.Services
 
         private void ExecuteCurrentStep()
         {
-            if (!_isRunning || _currentStepIndex >= _currentSequence.Steps.Count)
+            if (!_isRunning || _currentSequence == null || _currentStepIndex >= _currentSequence.Steps.Count)
             {
                 CompleteLoop();
                 return;
@@ -256,6 +263,48 @@ namespace PowerfulWizard.Services
             }
         }
         
+        private List<double> GenerateVariableSpeedIntervals(int totalDuration, int steps)
+        {
+            var intervals = new List<double>();
+            var random = Random.Shared;
+            
+            // Generate base intervals with some variation
+            double baseInterval = (double)totalDuration / steps;
+            
+            for (int i = 0; i < steps; i++)
+            {
+                // Add random variation to each interval (±30% by default)
+                double variation = 1.0 + (random.NextDouble() - 0.5) * SPEED_VARIATION_FACTOR * 2;
+                
+                // Slight acceleration/deceleration pattern (start slower, accelerate, then slow down)
+                double patternMultiplier = 1.0;
+                if (i < steps * 0.3) // First 30% - slower start
+                    patternMultiplier = 1.2 + (i / (steps * 0.3)) * 0.3;
+                else if (i > steps * 0.7) // Last 30% - slower finish
+                    patternMultiplier = 1.0 - ((i - steps * 0.7) / (steps * 0.3)) * 0.4;
+                else // Middle 40% - faster
+                    patternMultiplier = 0.8 + random.NextDouble() * 0.2;
+                
+                double interval = baseInterval * variation * patternMultiplier;
+                
+                // Ensure minimum interval for smooth movement
+                interval = Math.Max(5.0, interval);
+                
+                intervals.Add(interval);
+            }
+            
+            // Normalize to maintain total duration
+            double totalGenerated = intervals.Sum();
+            double normalizationFactor = totalDuration / totalGenerated;
+            
+            for (int i = 0; i < intervals.Count; i++)
+            {
+                intervals[i] *= normalizationFactor;
+            }
+            
+            return intervals;
+        }
+
         private void StartSmoothMovement(Point targetPosition, SequenceStep step)
         {
             // Get current cursor position
@@ -277,28 +326,53 @@ namespace PowerfulWizard.Services
             
             // Keep control point within reasonable bounds
             _bezierControlPoint = new Point(
-                Clamp(midX + offsetX, 
+                Math.Clamp(midX + offsetX, 
                       Math.Min(_currentPosition.X, _targetPosition.X) - 20,
                       Math.Max(_currentPosition.X, _targetPosition.X) + 20),
-                Clamp(midY + offsetY,
+                Math.Clamp(midY + offsetY,
                       Math.Min(_currentPosition.Y, _targetPosition.Y) - 20, 
                       Math.Max(_currentPosition.Y, _targetPosition.Y) + 20)
             );
 
             _currentStep = 0;
             _movementSteps = MOVEMENT_STEPS;
-            // Use custom movement duration from the step, or random if not specified
-            if (step.MovementDurationMs > 0)
+            
+            // Calculate base movement duration with distance-based adjustment
+            double movementDistance = Math.Sqrt(Math.Pow(_targetPosition.X - _currentPosition.X, 2) + 
+                                              Math.Pow(_targetPosition.Y - _currentPosition.Y, 2));
+            
+            // Calculate movement duration based on the step's movement speed setting
+            switch (step.MovementSpeed)
             {
-                _movementDuration = step.MovementDurationMs;
-            }
-            else
-            {
-                _movementDuration = _random.Next(MIN_MOVEMENT_DURATION_MS, MAX_MOVEMENT_DURATION_MS + 1);
+                case MovementSpeed.Fast:
+                    _movementDuration = _random.Next(80, 121); // 80-120ms
+                    break;
+                case MovementSpeed.Medium:
+                    _movementDuration = _random.Next(120, 201); // 120-200ms
+                    break;
+                case MovementSpeed.Slow:
+                    _movementDuration = _random.Next(200, 301); // 200-300ms
+                    break;
+                case MovementSpeed.Custom:
+                    _movementDuration = step.CustomMovementDurationMs;
+                    break;
+                default:
+                    _movementDuration = _random.Next(120, 201); // Default to medium
+                    break;
             }
             
-            // Set timer interval for smooth movement
-            _movementTimer.Interval = TimeSpan.FromMilliseconds((double)_movementDuration / (_movementSteps - 1));
+            // Apply distance-based adjustment for more natural movement
+            double distanceAdjustment = 1.0 + (movementDistance / 1000.0) * DISTANCE_SPEED_FACTOR;
+            _movementDuration = (int)(_movementDuration / distanceAdjustment);
+            
+            // Ensure duration stays within reasonable bounds
+            _movementDuration = Math.Max(MIN_MOVEMENT_DURATION_MS, Math.Min(MAX_MOVEMENT_DURATION_MS, _movementDuration));
+            
+            // Create variable speed intervals for more human-like movement
+            _speedIntervals = GenerateVariableSpeedIntervals(_movementDuration, _movementSteps);
+            
+            // Set timer interval for first step
+            _movementTimer.Interval = TimeSpan.FromMilliseconds(_speedIntervals[0]);
             _movementTimer.Start();
             
             // Notify about movement start
@@ -309,7 +383,7 @@ namespace PowerfulWizard.Services
             });
         }
         
-        private void OnMovementTimerTick(object sender, EventArgs e)
+        private void OnMovementTimerTick(object? sender, EventArgs e)
         {
             if (_currentStep >= _movementSteps)
             {
@@ -346,6 +420,12 @@ namespace PowerfulWizard.Services
             // For now, we'll add this functionality later
             
             _currentStep++;
+            
+            // Update timer interval for next step if we have more steps
+            if (_currentStep < _movementSteps && _speedIntervals.Count > _currentStep)
+            {
+                _movementTimer.Interval = TimeSpan.FromMilliseconds(_speedIntervals[_currentStep]);
+            }
         }
         
         private void StartStepDelayTimer(SequenceStep step)
@@ -386,12 +466,7 @@ namespace PowerfulWizard.Services
             }
         }
         
-        private static double Clamp(double value, double min, double max)
-        {
-            if (value < min) return min;
-            if (value > max) return max;
-            return value;
-        }
+        // .NET 8 has Math.Clamp built-in, no need for custom implementation
 
         private void PerformLeftClick()
         {
@@ -403,7 +478,7 @@ namespace PowerfulWizard.Services
             inputs[1].type = INPUT_MOUSE;
             inputs[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
             
-            SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
+            SendInput(2, inputs, Marshal.SizeOf<INPUT>());
         }
 
         private void PerformRightClick()
@@ -416,7 +491,7 @@ namespace PowerfulWizard.Services
             inputs[1].type = INPUT_MOUSE;
             inputs[1].mi.dwFlags = MOUSEEVENTF_RIGHTUP;
             
-            SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
+            SendInput(2, inputs, Marshal.SizeOf<INPUT>());
         }
 
         private void PerformMiddleClick()
@@ -429,7 +504,7 @@ namespace PowerfulWizard.Services
             inputs[1].type = INPUT_MOUSE;
             inputs[1].mi.dwFlags = MOUSEEVENTF_MIDDLEUP;
             
-            SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
+            SendInput(2, inputs, Marshal.SizeOf<INPUT>());
         }
 
         private void PerformDoubleClick()
@@ -440,7 +515,7 @@ namespace PowerfulWizard.Services
             PerformLeftClick();
         }
 
-        private void OnSequenceTimerTick(object sender, EventArgs e)
+        private void OnSequenceTimerTick(object? sender, EventArgs e)
         {
             _sequenceTimer.Stop();
             _countdownTimer.Stop();
@@ -451,7 +526,7 @@ namespace PowerfulWizard.Services
             // Move to next step
             _currentStepIndex++;
             
-            if (_currentStepIndex >= _currentSequence.Steps.Count)
+            if (_currentSequence != null && _currentStepIndex >= _currentSequence.Steps.Count)
             {
                 CompleteLoop();
             }
@@ -461,7 +536,7 @@ namespace PowerfulWizard.Services
             }
         }
         
-        private void OnCountdownTimerTick(object sender, EventArgs e)
+        private void OnCountdownTimerTick(object? sender, EventArgs e)
         {
             if (_isRunning && _sequenceTimer.IsEnabled)
             {
@@ -480,17 +555,20 @@ namespace PowerfulWizard.Services
             
             // Check if we should continue looping
             bool shouldContinue = false;
-            switch (_currentSequence.LoopMode)
+            if (_currentSequence != null)
             {
-                case LoopMode.Once:
-                    shouldContinue = false;
-                    break;
-                case LoopMode.Forever:
-                    shouldContinue = true;
-                    break;
-                case LoopMode.Count:
-                    shouldContinue = _currentLoop < _totalLoops;
-                    break;
+                switch (_currentSequence.LoopMode)
+                {
+                    case LoopMode.Once:
+                        shouldContinue = false;
+                        break;
+                    case LoopMode.Forever:
+                        shouldContinue = true;
+                        break;
+                    case LoopMode.Count:
+                        shouldContinue = _currentLoop < _totalLoops;
+                        break;
+                }
             }
 
             if (shouldContinue)
@@ -510,27 +588,33 @@ namespace PowerfulWizard.Services
                 // Hide the overlay
                 HideOverlay();
                 
-                SequenceCompleted?.Invoke(this, new SequenceCompletedEventArgs
+                if (_currentSequence != null)
                 {
-                    Sequence = _currentSequence,
-                    TotalLoops = _currentLoop,
-                    TotalSteps = _currentSequence.Steps.Count * _currentLoop
-                });
+                    SequenceCompleted?.Invoke(this, new SequenceCompletedEventArgs
+                    {
+                        Sequence = _currentSequence,
+                        TotalLoops = _currentLoop,
+                        TotalSteps = _currentSequence.Steps.Count * _currentLoop
+                    });
+                }
                 
-                _currentSequence = null;
+                _currentSequence = null!;
             }
         }
 
         private void UpdateProgress()
         {
-            ProgressChanged?.Invoke(this, new SequenceProgressEventArgs
+            if (_currentSequence != null)
             {
-                CurrentStepIndex = _currentStepIndex,
-                TotalSteps = _currentSequence.Steps.Count,
-                CurrentLoop = _currentLoop,
-                TotalLoops = _totalLoops,
-                NextActionTime = _nextActionTime
-            });
+                ProgressChanged?.Invoke(this, new SequenceProgressEventArgs
+                {
+                    CurrentStepIndex = _currentStepIndex,
+                    TotalSteps = _currentSequence.Steps.Count,
+                    CurrentLoop = _currentLoop,
+                    TotalLoops = _totalLoops,
+                    NextActionTime = _nextActionTime
+                });
+            }
         }
     }
 
@@ -545,14 +629,14 @@ namespace PowerfulWizard.Services
 
     public class SequenceCompletedEventArgs : EventArgs
     {
-        public Sequence Sequence { get; set; }
+        public Sequence Sequence { get; set; } = null!;
         public int TotalLoops { get; set; }
         public int TotalSteps { get; set; }
     }
 
     public class SequenceStepEventArgs : EventArgs
     {
-        public SequenceStep Step { get; set; }
+        public SequenceStep Step { get; set; } = null!;
         public int StepIndex { get; set; }
         public int LoopIndex { get; set; }
         public int ActualDelay { get; set; }

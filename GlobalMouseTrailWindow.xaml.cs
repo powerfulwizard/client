@@ -1,4 +1,3 @@
-using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
@@ -52,7 +51,7 @@ namespace PowerfulWizard
             Loaded += OnWindowLoaded;
         }
         
-        private void OnWindowLoaded(object sender, RoutedEventArgs e)
+        private void OnWindowLoaded(object? sender, RoutedEventArgs e)
         {
             // Make window click-through by setting extended window styles
             var hwnd = new WindowInteropHelper(this).Handle;
@@ -60,7 +59,7 @@ namespace PowerfulWizard
             SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle | WS_EX_TRANSPARENT | WS_EX_LAYERED);
         }
         
-        private void OnMouseTrackerTick(object sender, EventArgs e)
+        private void OnMouseTrackerTick(object? sender, EventArgs e)
         {
             if (GetCursorPos(out POINT point))
             {

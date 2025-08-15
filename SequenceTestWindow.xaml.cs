@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Threading;
@@ -11,7 +9,7 @@ namespace PowerfulWizard
     {
         private Sequence _sequence;
         private DispatcherTimer _testTimer;
-        private Random _random = new Random();
+        private readonly Random _random = Random.Shared;
         
         private int _currentStepIndex = 0;
         private int _currentLoop = 0;
@@ -114,7 +112,7 @@ namespace PowerfulWizard
             _testTimer.Start();
         }
 
-        private void OnTestTimerTick(object sender, EventArgs e)
+        private void OnTestTimerTick(object? sender, EventArgs e)
         {
             _testTimer.Stop();
             

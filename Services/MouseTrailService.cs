@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -13,7 +11,7 @@ namespace PowerfulWizard.Services
         private readonly Canvas _trailCanvas;
         private readonly List<TrailPoint> _trailPoints;
         private readonly DispatcherTimer _fadeTimer;
-        private readonly Random _random;
+        private readonly Random _random = Random.Shared;
         
         // Settings
         private bool _isEnabled;
@@ -32,7 +30,7 @@ namespace PowerfulWizard.Services
             };
             
             _trailPoints = new List<TrailPoint>();
-            _random = new Random();
+            // Random.Shared is already initialized above
             
             _fadeTimer = new DispatcherTimer();
             _fadeTimer.Tick += OnFadeTimerTick;
@@ -94,7 +92,7 @@ namespace PowerfulWizard.Services
                 var lastPoint = _trailPoints[_trailPoints.Count - 1];
                 var distance = Math.Sqrt(Math.Pow(position.X - lastPoint.Position.X, 2) + 
                                        Math.Pow(position.Y - lastPoint.Position.Y, 2));
-                if (distance < 2) return; // Skip if movement is less than 2 pixels
+                if (distance < 0.5) return; // Skip if movement is less than 0.5 pixels
             }
             
             // Create new trail point
@@ -162,6 +160,7 @@ namespace PowerfulWizard.Services
         {
             var color = _isRainbow ? GetRainbowColor() : _trailColor;
             
+            // Create a simple smooth line that follows the mouse movement
             var line = new System.Windows.Shapes.Line
             {
                 X1 = start.X,
@@ -206,7 +205,7 @@ namespace PowerfulWizard.Services
             }
         }
         
-        private void OnFadeTimerTick(object sender, EventArgs e)
+        private void OnFadeTimerTick(object? sender, EventArgs e)
         {
             bool hasVisiblePoints = false;
             
@@ -264,8 +263,8 @@ namespace PowerfulWizard.Services
         {
             public Point Position { get; set; }
             public double Opacity { get; set; }
-            public UIElement Element { get; set; }
-            public UIElement ConnectingLine { get; set; }
+            public UIElement Element { get; set; } = null!;
+            public UIElement? ConnectingLine { get; set; }
         }
     }
 }

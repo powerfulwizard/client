@@ -12,7 +12,7 @@ namespace PowerfulWizard
             get
             {
                 var version = Assembly.GetExecutingAssembly().GetName().Version;
-                return $"v{version.Major}.{version.Minor}.{version.Build}";
+                return version != null ? $"v{version.Major}.{version.Minor}.{version.Build}" : "v2.0.0";
             }
         }
 

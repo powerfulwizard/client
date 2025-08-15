@@ -75,7 +75,7 @@ namespace PowerfulWizard
             }
         }
 
-        private void OnSaveButtonClick(object sender, RoutedEventArgs e)
+        private void OnSaveButtonClick(object? sender, RoutedEventArgs e)
         {
             // Update Start modifiers
             _startModifiers = 0;
@@ -154,7 +154,7 @@ namespace PowerfulWizard
                 }
                 
                 // Update UI based on rainbow setting
-                OnRainbowTrailChanged(null, null);
+                OnRainbowTrailChanged(this, new RoutedEventArgs());
             }
             catch
             {
@@ -199,7 +199,7 @@ namespace PowerfulWizard
             }
         }
 
-        private void OnTrailColorButtonClick(object sender, RoutedEventArgs e)
+        private void OnTrailColorButtonClick(object? sender, RoutedEventArgs e)
         {
             // Simple color picker - cycle through predefined colors
             var currentBrush = TrailColorButton.Background as SolidColorBrush;
@@ -225,7 +225,7 @@ namespace PowerfulWizard
             TrailColorButton.Content = $"Color: {newColor.ToString().Substring(3)}"; // Remove the #FF prefix
         }
         
-        private void OnRainbowTrailChanged(object sender, RoutedEventArgs e)
+        private void OnRainbowTrailChanged(object? sender, RoutedEventArgs e)
         {
             // Enable/disable color button based on rainbow setting
             bool isRainbow = RainbowTrailCheck.IsChecked == true;

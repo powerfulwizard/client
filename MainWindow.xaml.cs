@@ -1,5 +1,4 @@
-﻿using System;
-using System.Configuration;
+﻿using System.Configuration;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -18,7 +17,7 @@ namespace PowerfulWizard
         private DispatcherTimer timer;
         private DispatcherTimer countdownTimer;
         private DispatcherTimer movementTimer;
-        private Random random = new Random();
+        private readonly Random random = Random.Shared;
         private const int HOTKEY_ID_START = 1;
         private const int HOTKEY_ID_STOP = 2;
         private uint startHotkeyModifiers;
@@ -27,7 +26,7 @@ namespace PowerfulWizard
         private uint stopHotkeyKey;
         private bool useRandomPosition;
         private Rect clickArea;
-        private OverlayWindow overlayWindow;
+        private OverlayWindow? overlayWindow;
         private const int MOD_CONTROL = 0x0002;
         private const int MOD_SHIFT = 0x0004;
         private const int MOD_ALT = 0x0001;
@@ -41,13 +40,20 @@ namespace PowerfulWizard
         private int movementSteps;
         private int currentStep;
         private int movementDuration;
+        private List<double> _speedIntervals = new();
         private const int MIN_MOVEMENT_DURATION_MS = 100;
         private const int MAX_MOVEMENT_DURATION_MS = 250;
         private const int MOVEMENT_STEPS = 10;
         
+        // Enhanced movement speed randomization
+        private const int MIN_BASE_DURATION_MS = 80;
+        private const int MAX_BASE_DURATION_MS = 300;
+        private const double SPEED_VARIATION_FACTOR = 0.3; // 30% speed variation within movement
+        private const double DISTANCE_SPEED_FACTOR = 0.15; // Distance affects speed by 15%
+        
         // Sequence functionality
-        private SequenceRunner sequenceRunner;
-        private Sequence currentSequence;
+        private SequenceRunner sequenceRunner = null!;
+        private Sequence? currentSequence;
         private bool isSequenceMode = false;
         
         // Mouse trail functionality
@@ -172,6 +178,26 @@ namespace PowerfulWizard
             SetClickAreaButton.IsEnabled = useRandomPosition;
             ClickTypeComboBox.SelectedIndex = (int)currentClickType;
             
+            // Load movement speed settings
+            try
+            {
+                int movementSpeedIndex = int.TryParse(ConfigurationManager.AppSettings["MovementSpeed"], out int msIndex) ? msIndex : 1; // Default to Medium
+                MovementSpeedComboBox.SelectedIndex = movementSpeedIndex;
+                
+                string customSpeed = ConfigurationManager.AppSettings["CustomMovementSpeed"] ?? "150";
+                CustomSpeedInput.Text = customSpeed;
+                
+                // Enable/disable custom speed input based on selection
+                bool isCustom = movementSpeedIndex == 3; // Custom is index 3
+                CustomSpeedInput.IsEnabled = isCustom;
+            }
+            catch
+            {
+                MovementSpeedComboBox.SelectedIndex = 1; // Default to Medium
+                CustomSpeedInput.Text = "150";
+                CustomSpeedInput.IsEnabled = false;
+            }
+            
             if (clickArea.Width > 0 && clickArea.Height > 0)
             {
                 overlayWindow = new OverlayWindow(clickArea);
@@ -195,7 +221,7 @@ namespace PowerfulWizard
             StopHotkeyLabel.Content = $"Hotkey: {GetHotkeyText(stopHotkeyModifiers, stopHotkeyKey)}";
         }
 
-        private void OnWindowClosing(object sender, System.ComponentModel.CancelEventArgs e)
+        private void OnWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
             IntPtr hWnd = new WindowInteropHelper(this).Handle;
             UnregisterHotKey(hWnd, HOTKEY_ID_START);
@@ -248,7 +274,7 @@ namespace PowerfulWizard
             return text.ToString();
         }
 
-        private void OnClickTypeChanged(object sender, SelectionChangedEventArgs e)
+        private void OnClickTypeChanged(object? sender, SelectionChangedEventArgs e)
         {
             if (ClickTypeComboBox?.SelectedIndex >= 0)
             {
@@ -257,7 +283,19 @@ namespace PowerfulWizard
             }
         }
 
-        private void OnSettingsButtonClick(object sender, RoutedEventArgs e)
+        private void OnMovementSpeedChanged(object? sender, SelectionChangedEventArgs e)
+        {
+            if (MovementSpeedComboBox?.SelectedIndex >= 0 && CustomSpeedInput != null)
+            {
+                // Enable/disable custom speed input based on selection
+                bool isCustom = MovementSpeedComboBox.SelectedIndex == 3; // Custom is index 3
+                CustomSpeedInput.IsEnabled = isCustom;
+                
+                SaveSettings();
+            }
+        }
+
+        private void OnSettingsButtonClick(object? sender, RoutedEventArgs e)
         {
             var settingsWindow = new SettingsWindow(this, startHotkeyModifiers, startHotkeyKey, stopHotkeyModifiers, stopHotkeyKey);
             settingsWindow.ShowDialog();
@@ -266,12 +304,12 @@ namespace PowerfulWizard
             globalMouseTrailWindow?.RefreshSettings();
         }
         
-        private void OnMouseMove(object sender, MouseEventArgs e)
+        private void OnMouseMove(object? sender, MouseEventArgs e)
         {
             // Mouse tracking is now handled globally by GlobalMouseTrailWindow
         }
 
-        private void OnSequenceButtonClick(object sender, RoutedEventArgs e)
+        private void OnSequenceButtonClick(object? sender, RoutedEventArgs e)
         {
             // Debug: Show what currentSequence contains
             string debugInfo = currentSequence == null ? "null" : $"'{currentSequence.Name}' with {currentSequence.Steps.Count} steps";
@@ -290,19 +328,19 @@ namespace PowerfulWizard
             }
         }
 
-        private void OnUseRandomPositionChecked(object sender, RoutedEventArgs e)
+        private void OnUseRandomPositionChecked(object? sender, RoutedEventArgs e)
         {
             useRandomPosition = UseRandomPositionCheck.IsChecked == true;
             SetClickAreaButton.IsEnabled = useRandomPosition;
             if (!useRandomPosition && overlayWindow != null)
             {
                 overlayWindow.Close();
-                overlayWindow = null;
+                overlayWindow = null!;
             }
             SaveSettings();
         }
 
-        private void OnSetClickAreaClick(object sender, RoutedEventArgs e)
+        private void OnSetClickAreaClick(object? sender, RoutedEventArgs e)
         {
             var clickAreaWindow = new ClickAreaWindow(this);
             if (clickAreaWindow.ShowDialog() == true)
@@ -332,12 +370,26 @@ namespace PowerfulWizard
                 config.AppSettings.Settings.Remove("ClickAreaWidth");
                 config.AppSettings.Settings.Remove("ClickAreaHeight");
                 config.AppSettings.Settings.Remove("ClickType");
+                config.AppSettings.Settings.Remove("MovementSpeed");
+                config.AppSettings.Settings.Remove("CustomMovementSpeed");
                 config.AppSettings.Settings.Add("UseRandomPosition", useRandomPosition.ToString());
                 config.AppSettings.Settings.Add("ClickAreaX", clickArea.X.ToString());
                 config.AppSettings.Settings.Add("ClickAreaY", clickArea.Y.ToString());
                 config.AppSettings.Settings.Add("ClickAreaWidth", clickArea.Width.ToString());
                 config.AppSettings.Settings.Add("ClickAreaHeight", clickArea.Height.ToString());
                 config.AppSettings.Settings.Add("ClickType", currentClickType.ToString());
+                
+                // Add null checks for movement speed settings
+                if (MovementSpeedComboBox?.SelectedIndex >= 0)
+                {
+                    config.AppSettings.Settings.Add("MovementSpeed", MovementSpeedComboBox.SelectedIndex.ToString());
+                }
+                
+                if (CustomSpeedInput?.Text != null)
+                {
+                    config.AppSettings.Settings.Add("CustomMovementSpeed", CustomSpeedInput.Text);
+                }
+                
                 config.Save(ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection("appSettings");
             }
@@ -347,7 +399,7 @@ namespace PowerfulWizard
             }
         }
 
-        private void OnStartButtonClick(object sender, RoutedEventArgs e)
+        private void OnStartButtonClick(object? sender, RoutedEventArgs e)
         {
             if (isSequenceMode)
             {
@@ -389,7 +441,7 @@ namespace PowerfulWizard
             }
         }
 
-        private void OnStopButtonClick(object sender, RoutedEventArgs e)
+        private void OnStopButtonClick(object? sender, EventArgs e)
         {
             if (isSequenceMode)
             {
@@ -420,7 +472,7 @@ namespace PowerfulWizard
             this.Activate();
         }
 
-        private void OnTimerTick(object sender, EventArgs e)
+        private void OnTimerTick(object? sender, EventArgs e)
         {
             if (int.TryParse(IntervalInput.Text, out int interval) && int.TryParse(DeviationInput.Text, out int maxDeviation))
             {
@@ -448,7 +500,7 @@ namespace PowerfulWizard
             }
         }
 
-        private void OnCountdownTimerTick(object sender, EventArgs e)
+        private void OnCountdownTimerTick(object? sender, EventArgs e)
         {
             if (timer.IsEnabled)
             {
@@ -464,7 +516,7 @@ namespace PowerfulWizard
             }
         }
 
-        private void OnMovementTimerTick(object sender, EventArgs e)
+        private void OnMovementTimerTick(object? sender, EventArgs e)
         {
             if (currentStep >= movementSteps)
             {
@@ -495,6 +547,54 @@ namespace PowerfulWizard
             // Trail points are now handled globally by GlobalMouseTrailWindow
 
             currentStep++;
+            
+            // Update timer interval for next step if we have more steps
+            if (currentStep < movementSteps && _speedIntervals.Count > currentStep)
+            {
+                movementTimer.Interval = TimeSpan.FromMilliseconds(_speedIntervals[currentStep]);
+            }
+        }
+
+        private List<double> GenerateVariableSpeedIntervals(int totalDuration, int steps)
+        {
+            var intervals = new List<double>();
+            var random = Random.Shared;
+            
+            // Generate base intervals with some variation
+            double baseInterval = (double)totalDuration / steps;
+            
+            for (int i = 0; i < steps; i++)
+            {
+                // Add random variation to each interval (±30% by default)
+                double variation = 1.0 + (random.NextDouble() - 0.5) * SPEED_VARIATION_FACTOR * 2;
+                
+                // Slight acceleration/deceleration pattern (start slower, accelerate, then slow down)
+                double patternMultiplier = 1.0;
+                if (i < steps * 0.3) // First 30% - slower start
+                    patternMultiplier = 1.2 + (i / (steps * 0.3)) * 0.3;
+                else if (i > steps * 0.7) // Last 30% - slower finish
+                    patternMultiplier = 1.0 - ((i - steps * 0.7) / (steps * 0.3)) * 0.4;
+                else // Middle 40% - faster
+                    patternMultiplier = 0.8 + random.NextDouble() * 0.2;
+                
+                double interval = baseInterval * variation * patternMultiplier;
+                
+                // Ensure minimum interval for smooth movement
+                interval = Math.Max(5.0, interval);
+                
+                intervals.Add(interval);
+            }
+            
+            // Normalize to maintain total duration
+            double totalGenerated = intervals.Sum();
+            double normalizationFactor = totalDuration / totalGenerated;
+            
+            for (int i = 0; i < intervals.Count; i++)
+            {
+                intervals[i] *= normalizationFactor;
+            }
+            
+            return intervals;
         }
 
         private void SimulateMouseClick()
@@ -533,10 +633,58 @@ namespace PowerfulWizard
 
                 currentStep = 0;
                 movementSteps = MOVEMENT_STEPS;
-                movementDuration = random.Next(MIN_MOVEMENT_DURATION_MS, MAX_MOVEMENT_DURATION_MS + 1);
                 
-                // Fix the timer interval calculation
-                movementTimer.Interval = TimeSpan.FromMilliseconds((double)movementDuration / (movementSteps - 1));
+                // Calculate base movement duration with distance-based adjustment
+                double movementDistance = Math.Sqrt(Math.Pow(targetPosition.X - currentPosition.X, 2) + 
+                                                  Math.Pow(targetPosition.Y - currentPosition.Y, 2));
+                
+                // Get movement duration from UI settings
+                int baseDuration;
+                if (MovementSpeedComboBox?.SelectedIndex >= 0)
+                {
+                    switch (MovementSpeedComboBox.SelectedIndex)
+                    {
+                        case 0: // Fast
+                            baseDuration = random.Next(80, 150);
+                            break;
+                        case 1: // Medium
+                            baseDuration = random.Next(150, 250);
+                            break;
+                        case 2: // Slow
+                            baseDuration = random.Next(250, 400);
+                            break;
+                        case 3: // Custom
+                            if (CustomSpeedInput?.Text != null && int.TryParse(CustomSpeedInput.Text, out int customSpeed))
+                                baseDuration = customSpeed;
+                            else
+                                baseDuration = 150;
+                            break;
+                        default:
+                            baseDuration = random.Next(150, 250); // Default to Medium
+                            break;
+                    }
+                }
+                else
+                {
+                    // Default to Medium if UI not ready
+                    baseDuration = random.Next(150, 250);
+                }
+                
+                // Adjust duration based on distance (longer distance = slightly faster movement)
+                double distanceAdjustment = 1.0 + (movementDistance / 1000.0) * DISTANCE_SPEED_FACTOR;
+                movementDuration = (int)(baseDuration / distanceAdjustment);
+                
+                // Ensure duration stays within reasonable bounds
+                movementDuration = Math.Max(MIN_MOVEMENT_DURATION_MS, Math.Min(MAX_MOVEMENT_DURATION_MS, movementDuration));
+                
+                // Create variable speed intervals for more human-like movement
+                var speedIntervals = GenerateVariableSpeedIntervals(movementDuration, movementSteps);
+                
+                // Store the intervals for use in movement timer
+                _speedIntervals = speedIntervals;
+                
+                // Start with first interval
+                movementTimer.Interval = TimeSpan.FromMilliseconds(speedIntervals[0]);
                 
                 MovementSpeedLabel.Content = $"Movement Speed: {movementDuration} ms";
                 movementTimer.Start();
@@ -575,19 +723,19 @@ namespace PowerfulWizard
             inputs[0].mi.dwFlags = downFlag;
             inputs[1].type = INPUT_MOUSE;
             inputs[1].mi.dwFlags = upFlag;
-            uint result = SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
+            uint result = SendInput(2, inputs, Marshal.SizeOf<INPUT>());
             if (result != 2)
             {
                 Console.WriteLine($"SendInput failed: Expected 2, got {result}");
             }
         }
 
-        private void OnPreviewTextInput(object sender, TextCompositionEventArgs e)
+        private void OnPreviewTextInput(object? sender, TextCompositionEventArgs e)
         {
             e.Handled = !Regex.IsMatch(e.Text, @"^[0-9]+$");
         }
 
-        private void OnTextChanged(object sender, TextChangedEventArgs e)
+        private void OnTextChanged(object? sender, TextChangedEventArgs e)
         {
             if (sender is TextBox textBox && string.IsNullOrWhiteSpace(textBox.Text))
             {
@@ -596,7 +744,7 @@ namespace PowerfulWizard
         }
 
         // Sequence event handlers
-        private void OnSequenceProgressChanged(object sender, SequenceProgressEventArgs e)
+        private void OnSequenceProgressChanged(object? sender, SequenceProgressEventArgs e)
         {
             Dispatcher.Invoke(() =>
             {
@@ -621,7 +769,7 @@ namespace PowerfulWizard
             });
         }
 
-        private void OnSequenceCompleted(object sender, SequenceCompletedEventArgs e)
+        private void OnSequenceCompleted(object? sender, SequenceCompletedEventArgs e)
         {
             Dispatcher.Invoke(() =>
             {
@@ -638,7 +786,7 @@ namespace PowerfulWizard
             });
         }
 
-        private void OnSequenceStepExecuted(object sender, SequenceStepEventArgs e)
+        private void OnSequenceStepExecuted(object? sender, SequenceStepEventArgs e)
         {
             Dispatcher.Invoke(() =>
             {
@@ -646,7 +794,7 @@ namespace PowerfulWizard
             });
         }
         
-        private void OnSequenceCountdownTick(object sender, SequenceCountdownEventArgs e)
+        private void OnSequenceCountdownTick(object? sender, SequenceCountdownEventArgs e)
         {
             Dispatcher.Invoke(() =>
             {
@@ -661,7 +809,7 @@ namespace PowerfulWizard
             });
         }
         
-        private void OnSequenceMovementStarted(object sender, MovementStartedEventArgs e)
+        private void OnSequenceMovementStarted(object? sender, MovementStartedEventArgs e)
         {
             Dispatcher.Invoke(() =>
             {
