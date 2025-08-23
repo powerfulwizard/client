@@ -250,6 +250,92 @@ namespace PowerfulWizard.Services
             _fadeTimer.Stop();
         }
         
+        public void CreateBurstEffect(Point position)
+        {
+            if (!_isEnabled) return;
+            
+            var color = _isRainbow ? GetRainbowColor() : _trailColor;
+            
+            // Create multiple particles for the burst effect
+            for (int i = 0; i < 8; i++)
+            {
+                var angle = (i * 45) * Math.PI / 180; // 8 particles in a circle
+                var distance = 15 + _random.Next(10); // Random distance between 15-25 pixels
+                
+                var particleX = position.X + Math.Cos(angle) * distance;
+                var particleY = position.Y + Math.Sin(angle) * distance;
+                
+                var particle = new Ellipse
+                {
+                    Width = 3 + _random.Next(3), // Random size 3-6 pixels
+                    Height = 3 + _random.Next(3),
+                    Fill = new SolidColorBrush(color),
+                    Opacity = 1.0
+                };
+                
+                Canvas.SetLeft(particle, particleX - particle.Width / 2);
+                Canvas.SetTop(particle, particleY - particle.Height / 2);
+                
+                _trailCanvas.Children.Add(particle);
+                
+                // Animate the particle with a timer
+                var timer = new DispatcherTimer();
+                timer.Interval = TimeSpan.FromMilliseconds(50);
+                var particleRef = particle;
+                var timerRef = timer;
+                
+                timer.Tick += (s, e) =>
+                {
+                    particleRef.Opacity -= 0.2;
+                    if (particleRef.Opacity <= 0)
+                    {
+                        _trailCanvas.Children.Remove(particleRef);
+                        timerRef.Stop();
+                    }
+                };
+                
+                timer.Start();
+            }
+            
+            // Create a central explosion circle
+            var explosion = new Ellipse
+            {
+                Width = 20,
+                Height = 20,
+                Fill = new SolidColorBrush(color),
+                Opacity = 0.8
+            };
+            
+            Canvas.SetLeft(explosion, position.X - explosion.Width / 2);
+            Canvas.SetTop(explosion, position.Y - explosion.Height / 2);
+            
+            _trailCanvas.Children.Add(explosion);
+            
+            // Animate the explosion
+            var explosionTimer = new DispatcherTimer();
+            explosionTimer.Interval = TimeSpan.FromMilliseconds(30);
+            var explosionRef = explosion;
+            var explosionTimerRef = explosionTimer;
+            
+            explosionTimer.Tick += (s, e) =>
+            {
+                explosionRef.Width += 2;
+                explosionRef.Height += 2;
+                explosionRef.Opacity -= 0.1;
+                
+                Canvas.SetLeft(explosionRef, position.X - explosionRef.Width / 2);
+                Canvas.SetTop(explosionRef, position.Y - explosionRef.Height / 2);
+                
+                if (explosionRef.Opacity <= 0)
+                {
+                    _trailCanvas.Children.Remove(explosionRef);
+                    explosionTimerRef.Stop();
+                }
+            };
+            
+            explosionTimer.Start();
+        }
+        
         public void SetEnabled(bool enabled)
         {
             _isEnabled = enabled;

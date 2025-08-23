@@ -20,10 +20,16 @@ namespace PowerfulWizard
         private readonly Random random = Random.Shared;
         private const int HOTKEY_ID_START = 1;
         private const int HOTKEY_ID_STOP = 2;
+        private const int HOTKEY_ID_RECORD = 3;
+        private const int HOTKEY_ID_PLAY = 4;
         private uint startHotkeyModifiers;
         private uint startHotkeyKey;
         private uint stopHotkeyModifiers;
         private uint stopHotkeyKey;
+        private uint recordHotkeyModifiers;
+        private uint recordHotkeyKey;
+        private uint playHotkeyModifiers;
+        private uint playHotkeyKey;
         private bool useRandomPosition;
         private Rect clickArea;
         private OverlayWindow? overlayWindow;
@@ -32,6 +38,8 @@ namespace PowerfulWizard
         private const int MOD_ALT = 0x0001;
         private const int VK_S = 0x53; // S key
         private const int VK_P = 0x50; // P key
+        private const int VK_F8 = 0x77; // F8 key
+        private const int VK_F9 = 0x78; // F9 key
         private const int WM_HOTKEY = 0x0312;
         private DateTime nextClickTime;
         private Point targetPosition;
@@ -59,6 +67,13 @@ namespace PowerfulWizard
         // Mouse trail functionality
         private GlobalMouseTrailWindow globalMouseTrailWindow;
         
+        // Mouse recording functionality
+        private MouseRecordingService mouseRecordingService;
+        private MouseRecording? currentRecording;
+        private double currentPlaybackSpeed = 1.0;
+        
+
+        
         public enum ClickType
         {
             LeftClick,
@@ -66,6 +81,8 @@ namespace PowerfulWizard
             MiddleClick,
             DoubleClick
         }
+        
+
         
         private ClickType currentClickType = ClickType.LeftClick;
 
@@ -86,6 +103,32 @@ namespace PowerfulWizard
 
         [DllImport("kernel32.dll")]
         private static extern uint GetLastError();
+        
+        // Mouse hook for recording clicks
+        [DllImport("user32.dll")]
+        private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
+        
+        [DllImport("user32.dll")]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+        
+        [DllImport("user32.dll")]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+        
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr GetModuleHandle(string lpModuleName);
+        
+        private const int WH_MOUSE_LL = 14;
+        private const int WM_LBUTTONDOWN = 0x0201;
+        private const int WM_LBUTTONUP = 0x0202;
+        private const int WM_RBUTTONDOWN = 0x0204;
+        private const int WM_RBUTTONUP = 0x0205;
+        private const int WM_MBUTTONDOWN = 0x0207;
+        private const int WM_MBUTTONUP = 0x0208;
+        private const int WM_MOUSEMOVE = 0x0200;
+        
+        private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
+        private LowLevelMouseProc? _mouseProc;
+        private IntPtr _mouseHookId = IntPtr.Zero;
 
         [StructLayout(LayoutKind.Sequential)]
         private struct INPUT
@@ -143,6 +186,17 @@ namespace PowerfulWizard
             globalMouseTrailWindow = new GlobalMouseTrailWindow();
             globalMouseTrailWindow.Show();
             
+            // Initialize mouse recording service
+            mouseRecordingService = new MouseRecordingService();
+            mouseRecordingService.RecordingStarted += OnRecordingStarted;
+            mouseRecordingService.RecordingStopped += OnRecordingStopped;
+            mouseRecordingService.PlaybackStarted += OnPlaybackStarted;
+            mouseRecordingService.PlaybackStopped += OnPlaybackStopped;
+            mouseRecordingService.PlaybackProgressChanged += OnPlaybackProgressChanged;
+            
+            // Setup mouse hook for recording clicks
+            SetupMouseHook();
+            
             Loaded += OnWindowLoaded;
             Closing += OnWindowClosing;
             
@@ -155,6 +209,10 @@ namespace PowerfulWizard
                 startHotkeyKey = uint.TryParse(ConfigurationManager.AppSettings["StartHotkeyKey"], out uint startKey) ? startKey : VK_S;
                 stopHotkeyModifiers = uint.TryParse(ConfigurationManager.AppSettings["StopHotkeyModifiers"], out uint stopMod) ? stopMod : MOD_CONTROL | MOD_SHIFT;
                 stopHotkeyKey = uint.TryParse(ConfigurationManager.AppSettings["StopHotkeyKey"], out uint stopKey) ? stopKey : VK_P;
+                recordHotkeyModifiers = uint.TryParse(ConfigurationManager.AppSettings["RecordHotkeyModifiers"], out uint recordMod) ? recordMod : 0; // No modifiers for F8
+                recordHotkeyKey = uint.TryParse(ConfigurationManager.AppSettings["RecordHotkeyKey"], out uint recordKey) ? recordKey : VK_F8;
+                playHotkeyModifiers = uint.TryParse(ConfigurationManager.AppSettings["PlayHotkeyModifiers"], out uint playMod) ? playMod : 0; // No modifiers for F9
+                playHotkeyKey = uint.TryParse(ConfigurationManager.AppSettings["PlayHotkeyKey"], out uint playKey) ? playKey : VK_F9;
                 useRandomPosition = bool.TryParse(ConfigurationManager.AppSettings["UseRandomPosition"], out bool useRandom) && useRandom;
                 double x = double.TryParse(ConfigurationManager.AppSettings["ClickAreaX"], out double cx) ? cx : 0;
                 double y = double.TryParse(ConfigurationManager.AppSettings["ClickAreaY"], out double cy) ? cy : 0;
@@ -169,6 +227,10 @@ namespace PowerfulWizard
                 startHotkeyKey = VK_S;
                 stopHotkeyModifiers = MOD_CONTROL | MOD_SHIFT;
                 stopHotkeyKey = VK_P;
+                recordHotkeyModifiers = 0; // No modifiers for F8
+                recordHotkeyKey = VK_F8;
+                playHotkeyModifiers = 0; // No modifiers for F9
+                playHotkeyKey = VK_F9;
                 useRandomPosition = false;
                 clickArea = new Rect(0, 0, 100, 100);
                 currentClickType = ClickType.LeftClick;
@@ -212,6 +274,8 @@ namespace PowerfulWizard
             IntPtr hWnd = new WindowInteropHelper(this).Handle;
             RegisterHotKey(hWnd, HOTKEY_ID_START, startHotkeyModifiers, startHotkeyKey);
             RegisterHotKey(hWnd, HOTKEY_ID_STOP, stopHotkeyModifiers, stopHotkeyKey);
+            RegisterHotKey(hWnd, HOTKEY_ID_RECORD, recordHotkeyModifiers, recordHotkeyKey);
+            RegisterHotKey(hWnd, HOTKEY_ID_PLAY, playHotkeyModifiers, playHotkeyKey);
             HwndSource source = HwndSource.FromHwnd(hWnd);
             source.AddHook(WndProc);
             StatusLabel.Content = "Status: Stopped";
@@ -219,6 +283,7 @@ namespace PowerfulWizard
             MovementSpeedLabel.Content = "Movement Speed: -- ms";
             StartHotkeyLabel.Content = $"Hotkey: {GetHotkeyText(startHotkeyModifiers, startHotkeyKey)}";
             StopHotkeyLabel.Content = $"Hotkey: {GetHotkeyText(stopHotkeyModifiers, stopHotkeyKey)}";
+
         }
 
         private void OnWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -226,9 +291,17 @@ namespace PowerfulWizard
             IntPtr hWnd = new WindowInteropHelper(this).Handle;
             UnregisterHotKey(hWnd, HOTKEY_ID_START);
             UnregisterHotKey(hWnd, HOTKEY_ID_STOP);
+            UnregisterHotKey(hWnd, HOTKEY_ID_RECORD);
+            UnregisterHotKey(hWnd, HOTKEY_ID_PLAY);
             overlayWindow?.Close();
             globalMouseTrailWindow?.Close();
             sequenceRunner?.StopSequence();
+            
+            // Unhook mouse hook
+            if (_mouseHookId != IntPtr.Zero)
+            {
+                UnhookWindowsHookEx(_mouseHookId);
+            }
         }
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -243,6 +316,25 @@ namespace PowerfulWizard
                 else if (id == HOTKEY_ID_STOP)
                 {
                     OnStopButtonClick(this, new RoutedEventArgs());
+                }
+                else if (id == HOTKEY_ID_RECORD)
+                {
+                    // Toggle recording - start if not recording, stop if recording
+                    if (mouseRecordingService.IsRecording)
+                    {
+                        // Stop recording
+                        mouseRecordingService.PauseRecording();
+                        mouseRecordingService.StopRecording();
+                    }
+                    else
+                    {
+                        // Start recording
+                        mouseRecordingService.StartRecording();
+                    }
+                }
+                else if (id == HOTKEY_ID_PLAY)
+                {
+                    OnPlayButtonClick(this, new RoutedEventArgs());
                 }
             }
             return IntPtr.Zero;
@@ -816,5 +908,233 @@ namespace PowerfulWizard
                 MovementSpeedLabel.Content = $"Movement Speed: {e.MovementDurationMs} ms";
             });
         }
+        
+        // Recording event handlers
+        private void OnRecordingStarted(object? sender, EventArgs e)
+        {
+            Console.WriteLine("OnRecordingStarted event fired");
+            Dispatcher.Invoke(() =>
+            {
+                RecordButton.Content = "Stop Recording";
+                RecordButton.IsEnabled = true;
+                PlayButton.IsEnabled = false;
+                RecordingStatusLabel.Content = "Recording...";
+                RecordingInfoLabel.Content = "Recording in progress...";
+                Console.WriteLine("UI updated for recording started");
+            });
+        }
+        
+        private void OnRecordingStopped(object? sender, EventArgs e)
+        {
+            Console.WriteLine("OnRecordingStopped event fired");
+            Dispatcher.Invoke(() =>
+            {
+                RecordButton.Content = "Start Recording";
+                RecordButton.IsEnabled = true;
+                PlayButton.IsEnabled = mouseRecordingService.CurrentRecording != null;
+                RecordingStatusLabel.Content = "Ready to Record";
+                currentRecording = mouseRecordingService.CurrentRecording;
+                
+                Console.WriteLine($"Current recording: {currentRecording?.Actions.Count ?? 0} actions");
+                
+                if (currentRecording != null && currentRecording.Actions.Count > 0)
+                {
+                    var duration = TimeSpan.FromMilliseconds(currentRecording.TotalDuration);
+                    RecordingInfoLabel.Content = $"Recording: {currentRecording.Actions.Count} actions, {duration.TotalSeconds:F1}s";
+                }
+                else
+                {
+                    RecordingInfoLabel.Content = "No recording loaded";
+                }
+                Console.WriteLine("UI updated for recording stopped");
+            });
+        }
+        
+        private void OnPlaybackStarted(object? sender, EventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                PlayButton.Content = "Stop Playback";
+                PlayButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x1E, 0x4A, 0x1E)); // Dark green
+                RecordButton.IsEnabled = false;
+                RecordingStatusLabel.Content = "Playing...";
+            });
+        }
+        
+        private void OnPlaybackStopped(object? sender, EventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                PlayButton.Content = "Play Recording";
+                PlayButton.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x33, 0x33, 0x33)); // Default dark gray
+                RecordButton.IsEnabled = true;
+                RecordingStatusLabel.Content = "Ready to Record";
+            });
+        }
+        
+        private void OnPlaybackProgressChanged(object? sender, int currentActionIndex)
+        {
+            if (currentRecording != null)
+            {
+                var progress = (double)currentActionIndex / currentRecording.Actions.Count * 100;
+                RecordingStatusLabel.Content = $"Playing... {progress:F0}%";
+            }
+        }
+        
+        // Recording button event handler - toggles between start and stop
+        private void OnRecordButtonClick(object sender, RoutedEventArgs e)
+        {
+            if (mouseRecordingService.IsRecording)
+            {
+                Console.WriteLine("Stop Recording button clicked");
+                // Pause recording before stopping to avoid recording the stop button click
+                mouseRecordingService.PauseRecording();
+                mouseRecordingService.StopRecording();
+            }
+            else
+            {
+                Console.WriteLine("Start Recording button clicked");
+                
+                // Re-setup mouse hook to ensure it's working properly for new recording
+                ReSetupMouseHook();
+                
+                mouseRecordingService.StartRecording();
+            }
+        }
+        
+        private void OnPlayButtonClick(object sender, RoutedEventArgs e)
+        {
+            if (mouseRecordingService.IsPlaying)
+            {
+                mouseRecordingService.StopPlayback();
+            }
+            else if (currentRecording != null)
+            {
+                mouseRecordingService.StartPlayback(currentRecording, currentPlaybackSpeed);
+            }
+        }
+        
+        // Playback speed change handler
+        private void OnPlaybackSpeedChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (PlaybackSpeedComboBox.SelectedIndex >= 0)
+            {
+                switch (PlaybackSpeedComboBox.SelectedIndex)
+                {
+                    case 0: currentPlaybackSpeed = 0.5; break;
+                    case 1: currentPlaybackSpeed = 1.0; break;
+                    case 2: currentPlaybackSpeed = 1.5; break;
+                    case 3: currentPlaybackSpeed = 2.0; break;
+                }
+            }
+        }
+        
+
+        
+
+        
+        // Mouse hook setup and handling
+        private void SetupMouseHook()
+        {
+            Console.WriteLine("Setting up mouse hook...");
+            _mouseProc = MouseHookProc;
+            _mouseHookId = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc!, GetModuleHandle(null)!, 0);
+            
+            if (_mouseHookId == IntPtr.Zero)
+            {
+                Console.WriteLine("ERROR: Failed to set up mouse hook!");
+            }
+            else
+            {
+                Console.WriteLine($"Mouse hook set up successfully. Hook ID: {_mouseHookId}");
+            }
+        }
+        
+        private void ReSetupMouseHook()
+        {
+            Console.WriteLine("Re-setting up mouse hook...");
+            
+            // Unhook existing hook if any
+            if (_mouseHookId != IntPtr.Zero)
+            {
+                UnhookWindowsHookEx(_mouseHookId);
+                _mouseHookId = IntPtr.Zero;
+                Console.WriteLine("Existing mouse hook unhooked");
+            }
+            
+            // Set up new hook
+            SetupMouseHook();
+        }
+        
+        private IntPtr MouseHookProc(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode >= 0)
+            {
+                int wmMessage = wParam.ToInt32();
+                
+                // Debug: Log all mouse messages to see what's being received
+                Console.WriteLine($"MOUSE HOOK: Message={wmMessage:X4} (0x{wmMessage:X4}), Recording={mouseRecordingService.IsRecording}");
+                
+                // Get current mouse position for burst effect and recording
+                Point mousePosition = new Point();
+                if (GetCursorPos(out POINT point))
+                {
+                    mousePosition = new Point(point.X, point.Y);
+                }
+                
+                // Handle mouse button events for recording
+                if (wmMessage == WM_LBUTTONDOWN && mouseRecordingService.IsRecording)
+                {
+                    Console.WriteLine($"MOUSE HOOK: LEFT BUTTON DOWN detected at {mousePosition}");
+                    mouseRecordingService.RecordButtonDown(RecordedActionType.LeftClick);
+                }
+                else if (wmMessage == WM_RBUTTONDOWN && mouseRecordingService.IsRecording)
+                {
+                    Console.WriteLine($"MOUSE HOOK: RIGHT BUTTON DOWN detected at {mousePosition}");
+                    mouseRecordingService.RecordButtonDown(RecordedActionType.RightClick);
+                }
+                else if (wmMessage == WM_MBUTTONDOWN && mouseRecordingService.IsRecording)
+                {
+                    Console.WriteLine($"MOUSE HOOK: MIDDLE BUTTON DOWN detected at {mousePosition}");
+                    mouseRecordingService.RecordButtonDown(RecordedActionType.MiddleClick);
+                }
+                else if (wmMessage == WM_LBUTTONUP && mouseRecordingService.IsRecording)
+                {
+                    Console.WriteLine($"MOUSE HOOK: LEFT BUTTON UP detected at {mousePosition}");
+                    mouseRecordingService.RecordButtonUp(RecordedActionType.LeftClick);
+                }
+                else if (wmMessage == WM_RBUTTONUP && mouseRecordingService.IsRecording)
+                {
+                    Console.WriteLine($"MOUSE HOOK: RIGHT BUTTON UP detected at {mousePosition}");
+                    mouseRecordingService.RecordButtonUp(RecordedActionType.RightClick);
+                }
+                else if (wmMessage == WM_MBUTTONUP && mouseRecordingService.IsRecording)
+                {
+                    Console.WriteLine($"MOUSE HOOK: MIDDLE BUTTON UP detected at {mousePosition}");
+                    mouseRecordingService.RecordButtonUp(RecordedActionType.MiddleClick);
+                }
+                
+                // Handle mouse movement for drag detection during recording
+                if (wmMessage == WM_MOUSEMOVE && mouseRecordingService.IsRecording)
+                {
+                    // The MouseRecordingService will handle drag detection in its timer
+                    // This ensures we capture all mouse movement during recording
+                }
+                
+                // Create burst effect for all mouse clicks (not just during recording)
+                if (wmMessage == WM_LBUTTONDOWN || wmMessage == WM_RBUTTONDOWN || wmMessage == WM_MBUTTONDOWN)
+                {
+                    // Use Dispatcher to ensure UI updates happen on the UI thread
+                    Dispatcher.Invoke(() =>
+                    {
+                        globalMouseTrailWindow?.CreateBurstEffect(mousePosition);
+                    });
+                }
+            }
+            
+            return CallNextHookEx(_mouseHookId, nCode, wParam, lParam);
+        }
+        
+
     }
 }

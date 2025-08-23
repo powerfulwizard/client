@@ -205,8 +205,8 @@ namespace PowerfulWizard
                     MessageBox.Show($"Error loading sequence: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
-        }
-    }
+            }
+}
     
     // Converters
     public class ClickTypeToIndexConverter : IValueConverter
@@ -300,5 +300,5 @@ namespace PowerfulWizard
         {
             throw new NotImplementedException();
         }
+            }
     }
-}

@@ -3,226 +3,375 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:PowerfulWizard"
         Title="{x:Static local:VersionInfo.AppTitle}" Height="600" Width="360"
+        Icon="favicon.ico"
         Background="#1E1E1E" Foreground="#FFFFFF">
     <Grid>
-        <!-- Main Content Grid -->
-        <Grid Margin="10">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+            <!-- Tab Control -->
+            <TabControl Background="#1E1E1E" Foreground="#FFFFFF" BorderBrush="#555555">
+            <TabControl.Style>
+                <Style TargetType="TabControl">
+                    <Setter Property="Background" Value="#1E1E1E"/>
+                    <Setter Property="BorderBrush" Value="#555555"/>
+                </Style>
+            </TabControl.Style>
+            <TabControl.Resources>
+                <Style TargetType="TabItem">
+                    <Setter Property="Background" Value="#1A1A1A"/>
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                    <Setter Property="BorderBrush" Value="#444444"/>
+                    <Setter Property="BorderThickness" Value="1,1,1,0"/>
+                    <Setter Property="Padding" Value="20,8"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="TabItem">
+                                <Grid>
+                                    <Border Name="Border" Background="{TemplateBinding Background}" 
+                                            BorderBrush="{TemplateBinding BorderBrush}" 
+                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                            Cursor="Hand">
+                                        <ContentPresenter ContentSource="Header" 
+                                                        HorizontalAlignment="Center" 
+                                                        VerticalAlignment="Center"
+                                                        Margin="20,8"/>
+                                    </Border>
+                                </Grid>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="Border" Property="Background" Value="#333333"/>
+                                        <Setter TargetName="Border" Property="BorderBrush" Value="#555555"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+                
+                <!-- Style for the TabPanel (the container holding the tab headers) -->
+                <Style TargetType="TabPanel">
+                    <Setter Property="Background" Value="#1E1E1E"/>
+                </Style>
+            </TabControl.Resources>
             
-            <Label Content="Click Interval (ms):" Grid.Row="0" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
-            <TextBox x:Name="IntervalInput" Text="1000" Grid.Row="0" Grid.Column="1" Margin="0,0,0,10" 
-                     PreviewTextInput="OnPreviewTextInput" TextChanged="OnTextChanged" 
-                     Background="#333333" Foreground="#FFFFFF"/>
-            
-            <Label Content="Max Deviation (ms):" Grid.Row="1" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
-            <TextBox x:Name="DeviationInput" Text="100" Grid.Row="1" Grid.Column="1" Margin="0,0,0,10" 
-                     PreviewTextInput="OnPreviewTextInput" TextChanged="OnTextChanged" 
-                     Background="#333333" Foreground="#FFFFFF"/>
-            
-            <Label Content="Click Type:" Grid.Row="2" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
-            <ComboBox x:Name="ClickTypeComboBox" Grid.Row="2" Grid.Column="1" Margin="0,0,0,10" 
-                      Background="#333333" Foreground="#FFFFFF" SelectionChanged="OnClickTypeChanged"
-                      BorderBrush="#555555">
-                <ComboBox.Style>
-                    <Style TargetType="ComboBox">
-                        <Setter Property="Background" Value="#333333"/>
-                        <Setter Property="Foreground" Value="#FFFFFF"/>
-                        <Setter Property="BorderBrush" Value="#555555"/>
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="ComboBox">
-                                    <Grid>
-                                        <ToggleButton Name="ToggleButton" Background="#333333" BorderBrush="#555555" 
-                                                      Foreground="#FFFFFF" BorderThickness="1"
-                                                      IsChecked="{Binding Path=IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}"
-                                                      ClickMode="Press">
+            <!-- Auto Clicker Tab -->
+            <TabItem Header="Auto Clicker">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <Label Content="Click Interval (ms):" Grid.Row="0" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
+                    <TextBox x:Name="IntervalInput" Text="1000" Grid.Row="0" Grid.Column="1" Margin="0,0,0,10" 
+                             PreviewTextInput="OnPreviewTextInput" TextChanged="OnTextChanged" 
+                             Background="#333333" Foreground="#FFFFFF"/>
+                    
+                    <Label Content="Max Deviation (ms):" Grid.Row="1" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
+                    <TextBox x:Name="DeviationInput" Text="100" Grid.Row="1" Grid.Column="1" Margin="0,0,0,10" 
+                             PreviewTextInput="OnPreviewTextInput" TextChanged="OnTextChanged" 
+                             Background="#333333" Foreground="#FFFFFF"/>
+                    
+                    <Label Content="Click Type:" Grid.Row="2" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
+                    <ComboBox x:Name="ClickTypeComboBox" Grid.Row="2" Grid.Column="1" Margin="0,0,0,10" 
+                              Background="#333333" Foreground="#FFFFFF" SelectionChanged="OnClickTypeChanged"
+                              BorderBrush="#555555">
+                        <ComboBox.Style>
+                            <Style TargetType="ComboBox">
+                                <Setter Property="Background" Value="#333333"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                <Setter Property="BorderBrush" Value="#555555"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ComboBox">
                                             <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition />
-                                                    <ColumnDefinition Width="20" />
-                                                </Grid.ColumnDefinitions>
-                                                <ContentPresenter Name="ContentSite" IsHitTestVisible="False" 
-                                                                  Content="{TemplateBinding SelectionBoxItem}"
-                                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                                                  ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
-                                                                  Margin="3,3,23,3" VerticalAlignment="Stretch" 
-                                                                  HorizontalAlignment="Left" />
-                                                <TextBlock Grid.Column="1" Text="▼" HorizontalAlignment="Center" 
-                                                           VerticalAlignment="Center" Foreground="#FFFFFF"/>
+                                                <ToggleButton Name="ToggleButton" Background="#333333" BorderBrush="#555555" 
+                                                              Foreground="#FFFFFF" BorderThickness="1"
+                                                              IsChecked="{Binding Path=IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                                              ClickMode="Press">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition />
+                                                            <ColumnDefinition Width="20" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <ContentPresenter Name="ContentSite" IsHitTestVisible="False" 
+                                                                          Content="{TemplateBinding SelectionBoxItem}"
+                                                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                                          ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                                          Margin="3,3,23,3" VerticalAlignment="Stretch" 
+                                                                          HorizontalAlignment="Left" />
+                                                        <TextBlock Grid.Column="1" Text="▼" HorizontalAlignment="Center" 
+                                                                   VerticalAlignment="Center" Foreground="#FFFFFF"/>
+                                                    </Grid>
+                                                </ToggleButton>
+                                                <Popup Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" 
+                                                       AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
+                                                    <Grid Name="DropDown" SnapsToDevicePixels="True" 
+                                                          MinWidth="{TemplateBinding ActualWidth}" MaxHeight="200">
+                                                        <Border Background="#333333" BorderThickness="1" BorderBrush="#555555"/>
+                                                        <ScrollViewer Margin="4,6,4,6" SnapsToDevicePixels="True">
+                                                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
+                                                        </ScrollViewer>
+                                                    </Grid>
+                                                </Popup>
                                             </Grid>
-                                        </ToggleButton>
-                                        <Popup Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" 
-                                               AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
-                                            <Grid Name="DropDown" SnapsToDevicePixels="True" 
-                                                  MinWidth="{TemplateBinding ActualWidth}" MaxHeight="200">
-                                                <Border Background="#333333" BorderThickness="1" BorderBrush="#555555"/>
-                                                <ScrollViewer Margin="4,6,4,6" SnapsToDevicePixels="True">
-                                                    <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
-                                                </ScrollViewer>
-                                            </Grid>
-                                        </Popup>
-                                    </Grid>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                </ComboBox.Style>
-                <ComboBox.Resources>
-                    <Style TargetType="ComboBoxItem">
-                        <Setter Property="Background" Value="#333333"/>
-                        <Setter Property="Foreground" Value="#FFFFFF"/>
-                        <Setter Property="BorderBrush" Value="#555555"/>
-                        <Style.Triggers>
-                            <Trigger Property="IsHighlighted" Value="True">
-                                <Setter Property="Background" Value="#555555"/>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ComboBox.Style>
+                        <ComboBox.Resources>
+                            <Style TargetType="ComboBoxItem">
+                                <Setter Property="Background" Value="#333333"/>
                                 <Setter Property="Foreground" Value="#FFFFFF"/>
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="#444444"/>
+                                <Setter Property="BorderBrush" Value="#555555"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsHighlighted" Value="True">
+                                        <Setter Property="Background" Value="#555555"/>
+                                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                                    </Trigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#444444"/>
+                                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ComboBox.Resources>
+                        <ComboBoxItem Content="Left Click" IsSelected="True"/>
+                        <ComboBoxItem Content="Right Click"/>
+                        <ComboBoxItem Content="Middle Click"/>
+                        <ComboBoxItem Content="Double Click"/>
+                    </ComboBox>
+                    
+                    <!-- Movement Speed Settings -->
+                    <Label Content="Movement Speed:" Grid.Row="3" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
+                    <ComboBox x:Name="MovementSpeedComboBox" Grid.Row="3" Grid.Column="1" Margin="0,0,0,10" 
+                              Background="#333333" Foreground="#FFFFFF" SelectionChanged="OnMovementSpeedChanged"
+                              BorderBrush="#555555">
+                        <ComboBox.Style>
+                            <Style TargetType="ComboBox">
+                                <Setter Property="Background" Value="#333333"/>
                                 <Setter Property="Foreground" Value="#FFFFFF"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </ComboBox.Resources>
-                <ComboBoxItem Content="Left Click" IsSelected="True"/>
-                <ComboBoxItem Content="Right Click"/>
-                <ComboBoxItem Content="Middle Click"/>
-                <ComboBoxItem Content="Double Click"/>
-            </ComboBox>
-            
-            <!-- Movement Speed Settings -->
-            <Label Content="Movement Speed:" Grid.Row="3" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
-            <ComboBox x:Name="MovementSpeedComboBox" Grid.Row="3" Grid.Column="1" Margin="0,0,0,10" 
-                      Background="#333333" Foreground="#FFFFFF" SelectionChanged="OnMovementSpeedChanged"
-                      BorderBrush="#555555">
-                <ComboBox.Style>
-                    <Style TargetType="ComboBox">
-                        <Setter Property="Background" Value="#333333"/>
-                        <Setter Property="Foreground" Value="#FFFFFF"/>
-                        <Setter Property="BorderBrush" Value="#555555"/>
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="ComboBox">
-                                    <Grid>
-                                        <ToggleButton Name="ToggleButton" Background="#333333" BorderBrush="#555555" 
-                                                      Foreground="#FFFFFF" BorderThickness="1"
-                                                      IsChecked="{Binding Path=IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}"
-                                                      ClickMode="Press">
+                                <Setter Property="BorderBrush" Value="#555555"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ComboBox">
                                             <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition />
-                                                    <ColumnDefinition Width="20" />
-                                                </Grid.ColumnDefinitions>
-                                                <ContentPresenter Name="ContentSite" IsHitTestVisible="False" 
-                                                                  Content="{TemplateBinding SelectionBoxItem}"
-                                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                                                  ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
-                                                                  Margin="3,3,23,3" VerticalAlignment="Stretch" 
-                                                                  HorizontalAlignment="Left" />
-                                                <TextBlock Grid.Column="1" Text="▼" HorizontalAlignment="Center" 
-                                                           VerticalAlignment="Center" Foreground="#FFFFFF"/>
+                                                <ToggleButton Name="ToggleButton" Background="#333333" BorderBrush="#555555" 
+                                                              Foreground="#FFFFFF" BorderThickness="1"
+                                                              IsChecked="{Binding Path=IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                                              ClickMode="Press">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition />
+                                                            <ColumnDefinition Width="20" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <ContentPresenter Name="ContentSite" IsHitTestVisible="False" 
+                                                                          Content="{TemplateBinding SelectionBoxItem}"
+                                                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                                          ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                                          Margin="3,3,23,3" VerticalAlignment="Stretch" 
+                                                                          HorizontalAlignment="Left" />
+                                                        <TextBlock Grid.Column="1" Text="▼" HorizontalAlignment="Center" 
+                                                                   VerticalAlignment="Center" Foreground="#FFFFFF"/>
+                                                    </Grid>
+                                                </ToggleButton>
+                                                <Popup Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" 
+                                                       AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
+                                                    <Grid Name="DropDown" SnapsToDevicePixels="True" 
+                                                          MinWidth="{TemplateBinding ActualWidth}" MaxHeight="200">
+                                                        <Border Background="#333333" BorderThickness="1" BorderBrush="#555555"/>
+                                                        <ScrollViewer Margin="4,6,4,6" SnapsToDevicePixels="True">
+                                                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
+                                                        </ScrollViewer>
+                                                    </Grid>
+                                                </Popup>
                                             </Grid>
-                                        </ToggleButton>
-                                        <Popup Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" 
-                                               AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
-                                            <Grid Name="DropDown" SnapsToDevicePixels="True" 
-                                                  MinWidth="{TemplateBinding ActualWidth}" MaxHeight="200">
-                                                <Border Background="#333333" BorderThickness="1" BorderBrush="#555555"/>
-                                                <ScrollViewer Margin="4,6,4,6" SnapsToDevicePixels="True">
-                                                    <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
-                                                </ScrollViewer>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ComboBox.Style>
+                        <ComboBox.Resources>
+                            <Style TargetType="ComboBoxItem">
+                                <Setter Property="Background" Value="#333333"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                <Setter Property="BorderBrush" Value="#555555"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsHighlighted" Value="True">
+                                        <Setter Property="Background" Value="#555555"/>
+                                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                                    </Trigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#444444"/>
+                                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ComboBox.Resources>
+                        <ComboBoxItem Content="Fast"/>
+                        <ComboBoxItem Content="Medium" IsSelected="True"/>
+                        <ComboBoxItem Content="Slow"/>
+                        <ComboBoxItem Content="Custom"/>
+                    </ComboBox>
+                    
+                    <Label Content="Custom Speed (ms):" Grid.Row="4" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
+                    <TextBox x:Name="CustomSpeedInput" Text="150" Grid.Row="4" Grid.Column="1" Margin="0,0,0,10" 
+                             PreviewTextInput="OnPreviewTextInput" TextChanged="OnTextChanged" 
+                             Background="#333333" Foreground="#FFFFFF" IsEnabled="False"/>
+                    
+                    <CheckBox x:Name="UseRandomPositionCheck" Content="Use Random Position" Grid.Row="5" Grid.Column="0" 
+                              Grid.ColumnSpan="2" Margin="0,0,0,10" Foreground="#FFFFFF" Checked="OnUseRandomPositionChecked" 
+                              Unchecked="OnUseRandomPositionChecked"/>
+                    
+                    <Button x:Name="SetClickAreaButton" Content="Set Click Area" Grid.Row="6" Grid.Column="0" 
+                            Grid.ColumnSpan="2" Margin="0,0,0,10" IsEnabled="False" Click="OnSetClickAreaClick" 
+                            Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
+                    
+                    <Label x:Name="StartHotkeyLabel" Content="Hotkey: Ctrl+Shift+S" Grid.Row="7" Grid.Column="0" 
+                           Margin="0,0,5,0" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
+                    <Label x:Name="StopHotkeyLabel" Content="Hotkey: Ctrl+Shift+P" Grid.Row="7" Grid.Column="1" 
+                           Margin="5,0,0,0" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
+                    
+                    <Button x:Name="StartButton" Content="Start" Grid.Row="8" Grid.Column="0" Width="162" Height="100" 
+                            Margin="0,0,5,10" Click="OnStartButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
+                    <Button x:Name="StopButton" Content="Stop" Grid.Row="8" Grid.Column="1" Width="162" Height="100" 
+                            Margin="5,0,0,10" Click="OnStopButtonClick" IsEnabled="False" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
+                    
+                    <Label x:Name="StatusLabel" Content="Status: Stopped" Grid.Row="9" Grid.Column="0" 
+                           Grid.ColumnSpan="2" Margin="0,0,0,10" Foreground="#FFFFFF"/>
+                    
+                    <Label x:Name="NextClickLabel" Content="Next Click: -- ms" Grid.Row="10" Grid.Column="0" 
+                           Grid.ColumnSpan="2" Margin="0,0,0,10" Foreground="#FFFFFF"/>
+                    
+                    <Grid Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Label x:Name="MovementSpeedLabel" Content="Movement Speed: -- ms" Grid.Column="0" 
+                               Margin="0,0,5,0" Foreground="#FFFFFF"/>
+                        <Button x:Name="SequenceButton" Content="Sequences" Grid.Column="1" Width="80" Height="40" 
+                                Margin="5,0,0,0" Click="OnSequenceButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
+                        <Button x:Name="SettingsButton" Content="Settings" Grid.Column="2" Width="80" Height="40" 
+                                Margin="5,0,0,0" Click="OnSettingsButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
+                    </Grid>
+                </Grid>
+            </TabItem>
+            
+            <!-- Recording Tab -->
+            <TabItem Header="Recording">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <Label Content="Playback Speed:" Grid.Row="0" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
+                    <ComboBox x:Name="PlaybackSpeedComboBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,10" 
+                              Background="#333333" Foreground="#FFFFFF" SelectionChanged="OnPlaybackSpeedChanged"
+                              BorderBrush="#555555">
+                        <ComboBox.Style>
+                            <Style TargetType="ComboBox">
+                                <Setter Property="Background" Value="#333333"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                <Setter Property="BorderBrush" Value="#555555"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ComboBox">
+                                            <Grid>
+                                                <ToggleButton Name="ToggleButton" Background="#333333" BorderBrush="#555555" 
+                                                              Foreground="#FFFFFF" BorderThickness="1"
+                                                              IsChecked="{Binding Path=IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                                              ClickMode="Press">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition />
+                                                            <ColumnDefinition Width="20" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <ContentPresenter Name="ContentSite" IsHitTestVisible="False" 
+                                                                          Content="{TemplateBinding SelectionBoxItem}"
+                                                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                                          ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                                          Margin="3,3,23,3" VerticalAlignment="Stretch" 
+                                                                          HorizontalAlignment="Left" />
+                                                        <TextBlock Grid.Column="1" Text="▼" HorizontalAlignment="Center" 
+                                                                   VerticalAlignment="Center" Foreground="#FFFFFF"/>
+                                                    </Grid>
+                                                </ToggleButton>
+                                                <Popup Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" 
+                                                       AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
+                                                    <Grid Name="DropDown" SnapsToDevicePixels="True" 
+                                                          MinWidth="{TemplateBinding ActualWidth}" MaxHeight="200">
+                                                        <Border Background="#333333" BorderThickness="1" BorderBrush="#555555"/>
+                                                        <ScrollViewer Margin="4,6,4,6" SnapsToDevicePixels="True">
+                                                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
+                                                        </ScrollViewer>
+                                                    </Grid>
+                                                </Popup>
                                             </Grid>
-                                        </Popup>
-                                    </Grid>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                </ComboBox.Style>
-                <ComboBox.Resources>
-                    <Style TargetType="ComboBoxItem">
-                        <Setter Property="Background" Value="#333333"/>
-                        <Setter Property="Foreground" Value="#FFFFFF"/>
-                        <Setter Property="BorderBrush" Value="#555555"/>
-                        <Style.Triggers>
-                            <Trigger Property="IsHighlighted" Value="True">
-                                <Setter Property="Background" Value="#555555"/>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ComboBox.Style>
+                        <ComboBox.Resources>
+                            <Style TargetType="ComboBoxItem">
+                                <Setter Property="Background" Value="#333333"/>
                                 <Setter Property="Foreground" Value="#FFFFFF"/>
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="#444444"/>
-                                <Setter Property="Foreground" Value="#FFFFFF"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </ComboBox.Resources>
-                <ComboBoxItem Content="Fast"/>
-                <ComboBoxItem Content="Medium" IsSelected="True"/>
-                <ComboBoxItem Content="Slow"/>
-                <ComboBoxItem Content="Custom"/>
-            </ComboBox>
-            
-            <Label Content="Custom Speed (ms):" Grid.Row="4" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
-            <TextBox x:Name="CustomSpeedInput" Text="150" Grid.Row="4" Grid.Column="1" Margin="0,0,0,10" 
-                     PreviewTextInput="OnPreviewTextInput" TextChanged="OnTextChanged" 
-                     Background="#333333" Foreground="#FFFFFF" IsEnabled="False"/>
-            
-            <CheckBox x:Name="UseRandomPositionCheck" Content="Use Random Position" Grid.Row="5" Grid.Column="0" 
-                      Grid.ColumnSpan="2" Margin="0,0,0,10" Foreground="#FFFFFF" Checked="OnUseRandomPositionChecked" 
-                      Unchecked="OnUseRandomPositionChecked"/>
-            
-            <Button x:Name="SetClickAreaButton" Content="Set Click Area" Grid.Row="6" Grid.Column="0" 
-                    Grid.ColumnSpan="2" Margin="0,0,0,10" IsEnabled="False" Click="OnSetClickAreaClick" 
-                    Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
-            
-            <Label x:Name="StartHotkeyLabel" Content="Hotkey: Ctrl+Shift+S" Grid.Row="7" Grid.Column="0" 
-                   Margin="0,0,5,0" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
-            <Label x:Name="StopHotkeyLabel" Content="Hotkey: Ctrl+Shift+P" Grid.Row="7" Grid.Column="1" 
-                   Margin="5,0,0,0" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
-            
-            <Button x:Name="StartButton" Content="Start" Grid.Row="8" Grid.Column="0" Width="162" Height="100" 
-                    Margin="0,0,5,10" Click="OnStartButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
-            <Button x:Name="StopButton" Content="Stop" Grid.Row="8" Grid.Column="1" Width="162" Height="100" 
-                    Margin="5,0,0,10" Click="OnStopButtonClick" IsEnabled="False" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
-            
-            <Label x:Name="StatusLabel" Content="Status: Stopped" Grid.Row="9" Grid.Column="0" 
-                   Grid.ColumnSpan="2" Margin="0,0,0,10" Foreground="#FFFFFF"/>
-            
-            <Label x:Name="NextClickLabel" Content="Next Click: -- ms" Grid.Row="10" Grid.Column="0" 
-                   Grid.ColumnSpan="2" Margin="0,0,0,10" Foreground="#FFFFFF"/>
-            
-            <Grid Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <Label x:Name="MovementSpeedLabel" Content="Movement Speed: -- ms" Grid.Column="0" 
-                       Margin="0,0,5,0" Foreground="#FFFFFF"/>
-                <Button x:Name="SequenceButton" Content="Sequences" Grid.Column="1" Width="80" Height="40" 
-                        Margin="5,0,0,0" Click="OnSequenceButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
-                <Button x:Name="SettingsButton" Content="Settings" Grid.Column="2" Width="80" Height="40" 
-                        Margin="5,0,0,0" Click="OnSettingsButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
-            </Grid>
-        </Grid>
-        
-
+                                <Setter Property="BorderBrush" Value="#555555"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsHighlighted" Value="True">
+                                        <Setter Property="Background" Value="#555555"/>
+                                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                                    </Trigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#444444"/>
+                                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ComboBox.Resources>
+                        <ComboBoxItem Content="0.5x"/>
+                        <ComboBoxItem Content="1.0x" IsSelected="True"/>
+                        <ComboBoxItem Content="1.5x"/>
+                        <ComboBoxItem Content="2.0x"/>
+                    </ComboBox>
+                    
+                    <Label Content="Recording Status:" Grid.Row="1" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
+                    <Label x:Name="RecordingStatusLabel" Content="Ready to Record" Grid.Row="1" Grid.Column="1" 
+                           Margin="0,0,0,10" Foreground="#FFFFFF"/>
+                    
+                    <Label Content="Recording Info:" Grid.Row="2" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
+                    <Label x:Name="RecordingInfoLabel" Content="No recording loaded" Grid.Row="2" Grid.Column="1" 
+                           Margin="0,0,0,10" Foreground="#FFFFFF"/>
+                    
+                    <!-- Recording Buttons -->
+                    <Button x:Name="RecordButton" Content="Start Recording" Grid.Row="3" Grid.Column="0" Width="162" Height="80" 
+                            Margin="0,0,5,10" Click="OnRecordButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
+                    <Button x:Name="PlayButton" Content="Play Recording" Grid.Row="3" Grid.Column="1" Width="162" Height="80" 
+                            Margin="5,0,0,10" Click="OnPlayButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand" IsEnabled="False"/>
+                </Grid>
+            </TabItem>
+        </TabControl>
     </Grid>
 </Window>

@@ -73,6 +73,11 @@ namespace PowerfulWizard
             _mouseTrailService.LoadSettings();
         }
         
+        public void CreateBurstEffect(Point position)
+        {
+            _mouseTrailService.CreateBurstEffect(position);
+        }
+        
         protected override void OnClosed(EventArgs e)
         {
             _mouseTracker?.Stop();
