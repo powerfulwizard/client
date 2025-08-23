@@ -9,9 +9,9 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <OptimizeImplicitlyTriggeredBuild>true</OptimizeImplicitlyTriggeredBuild>
         <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-        <Version>2.0.0</Version>
-        <AssemblyVersion>2.0.0</AssemblyVersion>
-        <FileVersion>2.0.0</FileVersion>
+            <Version>2.5.2</Version>
+    <AssemblyVersion>2.5.2</AssemblyVersion>
+    <FileVersion>2.5.2</FileVersion>
         <Product>Powerful Wizard Auto Clicker</Product>
         <Copyright>Copyright © 2024</Copyright>
         <Description>Advanced auto-clicker with sequence support, custom areas, and mouse trails</Description>

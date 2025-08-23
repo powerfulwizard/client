@@ -280,6 +280,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -370,6 +371,11 @@
                             Margin="0,0,5,10" Click="OnRecordButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
                     <Button x:Name="PlayButton" Content="Play Recording" Grid.Row="3" Grid.Column="1" Width="162" Height="80" 
                             Margin="5,0,0,10" Click="OnPlayButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand" IsEnabled="False"/>
+                    
+                    <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" 
+                               Text="Note: Hold and drag currently not supported" 
+                               HorizontalAlignment="Center" Foreground="#CCCCCC" FontSize="10" 
+                               TextAlignment="Center" Margin="20,5"/>
                 </Grid>
             </TabItem>
         </TabControl>

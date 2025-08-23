@@ -1,14 +1,14 @@
-# Powerful Wizard Auto Clicker v2.0.0
+# Powerful Wizard Auto Clicker v2.5.2
 
 A powerful and feature-rich auto clicker with advanced sequence support, visual overlays, and smooth mouse trails for Windows.
 
 ## Screenshots
 
 ### Main Interface
-![Main Window](images/PowerfulWizardMainWindowv2.0.0.png)
+![Main Window](images/PowerfulWizardMainWindowv2.5.2.png)
 
 ### Sequence Configurator
-![Sequence Configurator](images/PowerfulWizardSequenceConfigv2.0.0.png)
+![Sequence Configurator](images/PowerfulWizardSequenceConfigv2.5.2.png)
 
 ## 🚀 Key Features
 
@@ -41,6 +41,11 @@ A powerful and feature-rich auto clicker with advanced sequence support, visual 
 - **Global Overlay**: Trails visible across entire desktop
 - **Click-Through Design**: Trails don't interfere with mouse interactions
 
+### 🎬 **Mouse Recording & Playback**
+- **Record Mouse Actions**: Capture mouse movements, clicks, and positions for automation
+- **Playback Automation**: Replay recorded sequences with customizable speed
+- **Global Hotkeys**: Start/stop recording and playback with F8/F9 keys
+
 ### ⚙️ **Advanced Settings**
 - **Dark Theme UI**: Modern dark interface throughout the application
 - **Hotkey Customization**: Configure start/stop shortcuts
@@ -63,7 +68,7 @@ A powerful and feature-rich auto clicker with advanced sequence support, visual 
 - **Click-Through Design**: Overlays won't interfere with target applications
 - **Responsible Use**: Intended for automation, testing, and accessibility purposes
 
-## 🆕 Version 2.0.0 Highlights
+## 🆕 Version 2.5.2 Highlights
 - ✨ Complete sequence automation system
 - 🎨 Global mouse trails with rainbow effects  
 - 👁️ Visual overlay system with step tracking
@@ -72,6 +77,9 @@ A powerful and feature-rich auto clicker with advanced sequence support, visual 
 - 📱 Modern card-based UI design
 - 💾 Persistent sequence memory
 - 🖱️ Smooth Bézier curve mouse movement
+
+## 🌐 Website
+Visit [powerfulwizard.org](https://powerfulwizard.org) for more information and updates.
 
 ## 📄 License
 This project is provided as-is for educational, automation, and personal use. Please use responsibly and in accordance with the terms of service of any applications you interact with.
