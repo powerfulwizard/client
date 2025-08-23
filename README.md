@@ -5,10 +5,10 @@ A powerful and feature-rich auto clicker with advanced sequence support, visual 
 ## Screenshots
 
 ### Main Interface
-![Main Window](images/PowerfulWizardMainWindowv2.5.2.png)
+![Main Window](images/PowerfulWizardMainWindowv2.0.0.png)
 
 ### Sequence Configurator
-![Sequence Configurator](images/PowerfulWizardSequenceConfigv2.5.2.png)
+![Sequence Configurator](images/PowerfulWizardSequenceConfigv2.0.0.png)
 
 ## 🚀 Key Features
 
