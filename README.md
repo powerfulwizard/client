@@ -1,6 +1,6 @@
-# Powerful Wizard Auto Clicker v2.5.2
+# Powerful Wizard Auto Clicker v2.5.3
 
-A powerful and feature-rich auto clicker with advanced sequence support, visual overlays, and smooth mouse trails for Windows.
+A powerful and feature-rich auto clicker with advanced sequence support, visual overlays, smooth mouse trails, and mouse recording capabilities for Windows.
 
 ## Screenshots
 
@@ -45,6 +45,8 @@ A powerful and feature-rich auto clicker with advanced sequence support, visual 
 - **Record Mouse Actions**: Capture mouse movements, clicks, and positions for automation
 - **Playback Automation**: Replay recorded sequences with customizable speed
 - **Global Hotkeys**: Start/stop recording and playback with F8/F9 keys
+- **Recording Validation**: Built-in checks ensure recorded sequences are valid and safe
+- **Export/Import**: Save and share recorded sequences between systems
 
 ### ⚙️ **Advanced Settings**
 - **Dark Theme UI**: Modern dark interface throughout the application
@@ -57,7 +59,7 @@ A powerful and feature-rich auto clicker with advanced sequence support, visual 
 
 ## 🔧 Technical Requirements
 - **OS**: Windows 10/11 (64-bit recommended)
-- **Framework**: .NET 6.0 Runtime
+- **Framework**: .NET 8.0 Runtime
 - **Memory**: ~50MB RAM usage
 - **Permissions**: Standard user account (no admin required)
 
@@ -68,15 +70,48 @@ A powerful and feature-rich auto clicker with advanced sequence support, visual 
 - **Click-Through Design**: Overlays won't interfere with target applications
 - **Responsible Use**: Intended for automation, testing, and accessibility purposes
 
-## 🆕 Version 2.5.2 Highlights
-- ✨ Complete sequence automation system
-- 🎨 Global mouse trails with rainbow effects  
-- 👁️ Visual overlay system with step tracking
-- 🕰️ Real-time countdown timers
-- 🎯 Click-through overlays for unobstructed use
-- 📱 Modern card-based UI design
-- 💾 Persistent sequence memory
-- 🖱️ Smooth Bézier curve mouse movement
+## 🆕 Version 2.5.3 Highlights
+- ✨ Enhanced mouse recording and playback system
+- 🎨 Improved mouse trails with better performance
+- 👁️ Enhanced visual overlay system with better step tracking
+- 🕰️ Optimized countdown timers and timing accuracy
+- 🎯 Improved click-through overlays for better usability
+- 📱 Enhanced UI responsiveness and modern design
+- 💾 Better sequence memory and validation
+- 🖱️ Smoother mouse movement and positioning
+- 🔧 Enhanced build and release automation system
+- 📦 Automated GitHub releases with custom descriptions
+
+## 🚀 Build & Release Process
+
+This project includes an automated build and release system that handles the entire release workflow:
+
+### **Automated Release Features**
+- **Version Management**: Automatic version incrementing and project file updates
+- **Build Automation**: Clean Release builds with comprehensive error handling
+- **Production Archives**: Clean ZIP files with only necessary production files
+- **Site Updates**: Automatic HTML page updates with new version information
+- **GitHub Releases**: Automated release creation with custom descriptions
+- **Git Operations**: Automated commits, tagging, and pushing
+
+### **Build Script Usage**
+```bash
+# Interactive release (recommended)
+.\build-release.bat
+
+# Quick release with suggested version
+.\build-release.bat -SkipPrompt
+
+# Test run (see what would happen)
+.\build-release.bat -DryRun
+```
+
+### **Prerequisites**
+- .NET 8.0 SDK
+- Git
+- GitHub CLI (gh)
+
+For detailed build documentation, see the root directory files: `BUILD-README.md` and `QUICK-START.md`.
 
 ## 🌐 Website
 Visit [powerfulwizard.org](https://powerfulwizard.org) for more information and updates.
