@@ -82,39 +82,8 @@ Visit [powerfulwizard.org](https://powerfulwizard.org) for more information and 
 - 📱 Enhanced UI responsiveness and modern design
 - 💾 Better sequence memory and validation
 - 🖱️ Smoother mouse movement and positioning
-- 🔧 Enhanced build and release automation system
-- 📦 Automated GitHub releases with custom descriptions
 
-## 🚀 Build & Release Process
 
-This project includes an automated build and release system that handles the entire release workflow:
-
-### **Automated Release Features**
-- **Version Management**: Automatic version incrementing and project file updates
-- **Build Automation**: Clean Release builds with comprehensive error handling
-- **Production Archives**: Clean ZIP files with only necessary production files
-- **Site Updates**: Automatic HTML page updates with new version information
-- **GitHub Releases**: Automated release creation with custom descriptions
-- **Git Operations**: Automated commits, tagging, and pushing
-
-### **Build Script Usage**
-```bash
-# Interactive release (recommended)
-.\build-release.bat
-
-# Quick release with suggested version
-.\build-release.bat -SkipPrompt
-
-# Test run (see what would happen)
-.\build-release.bat -DryRun
-```
-
-### **Prerequisites**
-- .NET 8.0 SDK
-- Git
-- GitHub CLI (gh)
-
-For detailed build documentation, see the root directory files: `BUILD-README.md` and `QUICK-START.md`.
 
 ## 📄 License
 This project is provided as-is for educational, automation, and personal use. Please use responsibly and in accordance with the terms of service of any applications you interact with.
