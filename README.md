@@ -2,6 +2,9 @@
 
 A powerful and feature-rich auto clicker with advanced sequence support, visual overlays, smooth mouse trails, and mouse recording capabilities for Windows.
 
+## 🌐 Website
+Visit [powerfulwizard.org](https://powerfulwizard.org) for more information and updates.
+
 ## Screenshots
 
 ### Main Interface
@@ -112,9 +115,6 @@ This project includes an automated build and release system that handles the ent
 - GitHub CLI (gh)
 
 For detailed build documentation, see the root directory files: `BUILD-README.md` and `QUICK-START.md`.
-
-## 🌐 Website
-Visit [powerfulwizard.org](https://powerfulwizard.org) for more information and updates.
 
 ## 📄 License
 This project is provided as-is for educational, automation, and personal use. Please use responsibly and in accordance with the terms of service of any applications you interact with.
