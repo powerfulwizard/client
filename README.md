@@ -1,4 +1,4 @@
-# Powerful Wizard Auto Clicker v2.5.3
+# Powerful Wizard Auto Clicker v2.6.0
 
 A powerful and feature-rich auto clicker with advanced sequence support, visual overlays, smooth mouse trails, and mouse recording capabilities for Windows.
 
@@ -58,6 +58,20 @@ Visit [powerfulwizard.org](https://powerfulwizard.org) for more information and 
 - **Position Memory**: Sequences remember configuration between sessions
 - **Safe Defaults**: Reasonable limits to prevent system issues
 
+### 🎯 **Color Detection & Validation (v2.6.0)**
+- **Advanced Color Detection**: OpenCV-powered color matching for precise target identification
+- **Click Validation System**: Automatically detects red/yellow click indicators and retries failed clicks immediately
+- **Smart Retry Logic**: Failed clicks are retried without waiting for step delays
+- **Visual Area Selection**: See exactly where each sequence step will click with highlighted areas
+- **OSRS Gaming Support**: Perfect for games with click success/failure indicators
+
+### 🖱️ **Human-like Mouse Movement (v2.6.0)**
+- **Natural Movement Patterns**: Variable speed based on distance - longer paths start faster and slow down
+- **Mouse Stutter Simulation**: Small 1-3 pixel bumps at click time to simulate human actuation
+- **Overshoot Feature**: For long paths (300px+), mouse moves slightly beyond target before snapping back
+- **Easing Functions**: Smooth cubic ease-out transitions for natural acceleration/deceleration
+- **Distance-Based Speed**: Short movements are 50% faster, long movements are 20% slower
+
 
 
 ## 🔧 Technical Requirements
@@ -66,6 +80,12 @@ Visit [powerfulwizard.org](https://powerfulwizard.org) for more information and 
 - **Memory**: ~50MB RAM usage
 - **Permissions**: Standard user account (no admin required)
 
+## 📦 Dependencies & Libraries
+- **OpenCvSharp4**: Advanced computer vision for color detection and image processing
+- **System.Drawing.Common**: Screen capture and bitmap manipulation
+- **Windows Forms**: UI framework for overlays and visual elements
+- **WPF**: Modern Windows Presentation Foundation for main application interface
+
 ## ⚠️ Important Notes
 - **Minimum Interval**: 100ms enforced to prevent system overload
 - **Safe Shutdown**: Always use Stop button or hotkey before closing
@@ -73,7 +93,19 @@ Visit [powerfulwizard.org](https://powerfulwizard.org) for more information and 
 - **Click-Through Design**: Overlays won't interfere with target applications
 - **Responsible Use**: Intended for automation, testing, and accessibility purposes
 
-## 🆕 Version 2.5.3 Highlights
+## 🆕 Version 2.6.0 Highlights
+- 🎯 **Click Validation System**: Automatically detects failed clicks and retries immediately
+- 🌈 **Advanced Color Detection**: OpenCV-powered color matching for precise target identification
+- 🖱️ **Human-like Mouse Movement**: Natural movement patterns with overshoot and stutter simulation
+- ⚡ **Variable Speed Movement**: Distance-based speed adjustment for realistic automation
+- 👁️ **Visual Area Selection**: Enhanced click area visualization for sequence steps
+- 🎮 **OSRS Gaming Support**: Perfect for games with click success/failure indicators
+- 🚀 **Performance Improvements**: Optimized color detection and movement algorithms
+- 💾 **Enhanced Sequence Management**: Better validation and error handling
+
+## 📋 Previous Version Highlights
+
+### Version 2.5.3
 - ✨ Enhanced mouse recording and playback system
 - 🎨 Improved mouse trails with better performance
 - 👁️ Enhanced visual overlay system with better step tracking
@@ -84,6 +116,25 @@ Visit [powerfulwizard.org](https://powerfulwizard.org) for more information and 
 - 🖱️ Smoother mouse movement and positioning
 
 
+
+## 🎯 Use Cases & Applications
+
+### 🎮 **Gaming Automation**
+- **OSRS High Alchemy**: Perfect for Old School RuneScape spell casting with automatic retry
+- **Clicker Games**: Idle games like Cookie Clicker with human-like timing
+- **Resource Farming**: Automated collection in various MMOs and simulation games
+- **Training Routines**: Complex multi-step automation for skill training
+
+### 💼 **Productivity & Testing**
+- **Form Automation**: Repetitive data entry and form filling
+- **UI Testing**: Automated testing of application interfaces
+- **Data Processing**: Bulk operations on spreadsheets and databases
+- **Workflow Automation**: Complex multi-step business processes
+
+### 🖱️ **Accessibility & Assistance**
+- **Motor Impairment Support**: Alternative input methods for users with disabilities
+- **Repetitive Task Relief**: Reduce strain from monotonous clicking tasks
+- **Precision Control**: Enhanced accuracy for fine motor control tasks
 
 ## 📄 License
 This project is provided as-is for educational, automation, and personal use. Please use responsibly and in accordance with the terms of service of any applications you interact with.
