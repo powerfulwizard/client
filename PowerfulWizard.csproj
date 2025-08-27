@@ -9,9 +9,13 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <OptimizeImplicitlyTriggeredBuild>true</OptimizeImplicitlyTriggeredBuild>
         <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-            <Version>2.6.0</Version>
-    <AssemblyVersion>2.6.0</AssemblyVersion>
-    <FileVersion>2.6.0</FileVersion>
+        <SelfContained>false</SelfContained>
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        <PublishSingleFile>true</PublishSingleFile>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <Version>2.6.0</Version>
+        <AssemblyVersion>2.6.0</AssemblyVersion>
+        <FileVersion>2.6.0</FileVersion>
         <Product>Powerful Wizard Auto Clicker</Product>
         <Copyright>Copyright © 2024</Copyright>
         <Description>Advanced auto-clicker with sequence support, custom areas, and mouse trails</Description>
@@ -28,4 +32,21 @@
         <PackageReference Include="OpenCvSharp4" Version="4.8.0.20230708" />
         <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.8.0.20230708" />
     </ItemGroup>
+    
+    <!-- Ensure OpenCV native libraries are included in the distribution -->
+    <ItemGroup>
+        <Content Include="$(NuGetPackageRoot)opencvsharp4.runtime.win\4.8.0.20230708\runtimes\win-x64\native\*.dll">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+            <Link>%(Filename)%(Extension)</Link>
+        </Content>
+    </ItemGroup>
+    
+    <!-- Alternative approach: Copy all OpenCV dependencies -->
+    <Target Name="CopyOpenCvNativeLibraries" AfterTargets="Build">
+        <ItemGroup>
+            <OpenCvNativeFiles Include="$(NuGetPackageRoot)opencvsharp4.runtime.win\4.8.0.20230708\runtimes\win-x64\native\*.dll" />
+        </ItemGroup>
+        <Copy SourceFiles="@(OpenCvNativeFiles)" DestinationFolder="$(OutputPath)" />
+    </Target>
 </Project>
+
