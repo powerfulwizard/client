@@ -45,57 +45,155 @@ namespace PowerfulWizard.Services
         #region OpenCV Color Detection
 
         /// <summary>
-        /// OpenCV-based color detection - much more reliable than GetPixel
+        /// OpenCV-based color detection with fallback to basic pixel sampling
         /// </summary>
         public static System.Windows.Point? FindMatchingColors(System.Windows.Media.Color targetColor, int tolerance, System.Windows.Rect searchArea)
         {
-            System.Diagnostics.Debug.WriteLine($"=== OPENCV COLOR DETECTION ===");
+            System.Diagnostics.Debug.WriteLine($"=== COLOR DETECTION START ===");
             System.Diagnostics.Debug.WriteLine($"Target: R={targetColor.R}, G={targetColor.G}, B={targetColor.B}, Tolerance={tolerance}");
             System.Diagnostics.Debug.WriteLine($"Area: {searchArea.Width}x{searchArea.Height} at ({searchArea.Left}, {searchArea.Top})");
             
+            // Try OpenCV first (preferred method)
             try
             {
-                // Capture the screen area
+                var opencvResult = FindMatchingColorsWithOpenCV(targetColor, tolerance, searchArea);
+                if (opencvResult.HasValue)
+                {
+                    System.Diagnostics.Debug.WriteLine("OpenCV color detection successful");
+                    return opencvResult;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"OpenCV color detection failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine("Falling back to basic pixel sampling...");
+            }
+            
+            // Fallback to basic pixel sampling if OpenCV fails
+            try
+            {
+                var fallbackResult = FindMatchingColorsWithFallback(targetColor, tolerance, searchArea);
+                if (fallbackResult.HasValue)
+                {
+                    System.Diagnostics.Debug.WriteLine("Fallback color detection successful");
+                    return fallbackResult;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Fallback color detection also failed: {ex.Message}");
+            }
+            
+            System.Diagnostics.Debug.WriteLine("All color detection methods failed");
+            return null;
+        }
+        
+        /// <summary>
+        /// OpenCV-based color detection implementation
+        /// </summary>
+        private static System.Windows.Point? FindMatchingColorsWithOpenCV(System.Windows.Media.Color targetColor, int tolerance, System.Windows.Rect searchArea)
+        {
+            System.Diagnostics.Debug.WriteLine("Attempting OpenCV color detection...");
+            
+            // Capture the screen area
+            using (var bitmap = CaptureScreenArea(searchArea))
+            {
+                if (bitmap == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("Failed to capture screen area");
+                    return null;
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Captured bitmap: {bitmap.Width}x{bitmap.Height}");
+                
+                // Convert to OpenCV Mat
+                using (var mat = BitmapToMat(bitmap))
+                {
+                    // Convert BGR to RGB (OpenCV uses BGR by default)
+                    using (var rgbMat = mat.CvtColor(ColorConversionCodes.BGR2RGB))
+                    {
+                        // Find matching colors using OpenCV
+                        var matchingPoints = FindColorsWithOpenCV(rgbMat, targetColor, tolerance, searchArea);
+                        
+                        if (matchingPoints.Count > 0)
+                        {
+                            var random = new Random();
+                            var selectedPoint = matchingPoints[random.Next(matchingPoints.Count)];
+                            System.Diagnostics.Debug.WriteLine($"OpenCV found {matchingPoints.Count} matches, selected: ({selectedPoint.X}, {selectedPoint.Y})");
+                            return selectedPoint;
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("OpenCV found no matches");
+                            return null;
+                        }
+                    }
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Fallback color detection using basic pixel sampling
+        /// </summary>
+        private static System.Windows.Point? FindMatchingColorsWithFallback(System.Windows.Media.Color targetColor, int tolerance, System.Windows.Rect searchArea)
+        {
+            System.Diagnostics.Debug.WriteLine("Using fallback pixel sampling method...");
+            
+            try
+            {
                 using (var bitmap = CaptureScreenArea(searchArea))
                 {
-                    if (bitmap == null)
-                    {
-                        System.Diagnostics.Debug.WriteLine("Failed to capture screen area");
-                        return null;
-                    }
-
-                    System.Diagnostics.Debug.WriteLine($"Captured bitmap: {bitmap.Width}x{bitmap.Height}");
+                    if (bitmap == null) return null;
                     
-                    // Convert to OpenCV Mat
-                    using (var mat = BitmapToMat(bitmap))
+                    var matchingPoints = new List<System.Windows.Point>();
+                    var random = new Random();
+                    
+                    // Sample pixels in a grid pattern for performance
+                    int stepX = Math.Max(1, (int)(searchArea.Width / 20));
+                    int stepY = Math.Max(1, (int)(searchArea.Height / 20));
+                    
+                    for (int x = 0; x < bitmap.Width; x += stepX)
                     {
-                        // Convert BGR to RGB (OpenCV uses BGR by default)
-                        using (var rgbMat = mat.CvtColor(ColorConversionCodes.BGR2RGB))
+                        for (int y = 0; y < bitmap.Height; y += stepY)
                         {
-                            // Find matching colors using OpenCV
-                            var matchingPoints = FindColorsWithOpenCV(rgbMat, targetColor, tolerance, searchArea);
+                            var pixel = bitmap.GetPixel(x, y);
                             
-                            if (matchingPoints.Count > 0)
+                            // Check if pixel color matches target within tolerance
+                            if (IsColorMatch(pixel, targetColor, tolerance))
                             {
-                                var random = new Random();
-                                var selectedPoint = matchingPoints[random.Next(matchingPoints.Count)];
-                                System.Diagnostics.Debug.WriteLine($"OpenCV found {matchingPoints.Count} matches, selected: ({selectedPoint.X}, {selectedPoint.Y})");
-                                return selectedPoint;
-                            }
-                            else
-                            {
-                                System.Diagnostics.Debug.WriteLine("OpenCV found no matches");
-                                return null;
+                                var worldX = (int)searchArea.Left + x;
+                                var worldY = (int)searchArea.Top + y;
+                                matchingPoints.Add(new System.Windows.Point(worldX, worldY));
                             }
                         }
+                    }
+                    
+                    if (matchingPoints.Count > 0)
+                    {
+                        var selectedPoint = matchingPoints[random.Next(matchingPoints.Count)];
+                        System.Diagnostics.Debug.WriteLine($"Fallback found {matchingPoints.Count} matches, selected: ({selectedPoint.X}, {selectedPoint.Y})");
+                        return selectedPoint;
                     }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"OpenCV color detection error: {ex.Message}");
-                return null;
+                System.Diagnostics.Debug.WriteLine($"Fallback method error: {ex.Message}");
             }
+            
+            return null;
+        }
+        
+        /// <summary>
+        /// Check if two colors match within tolerance
+        /// </summary>
+        private static bool IsColorMatch(System.Drawing.Color pixelColor, System.Windows.Media.Color targetColor, int tolerance)
+        {
+            int rDiff = Math.Abs(pixelColor.R - targetColor.R);
+            int gDiff = Math.Abs(pixelColor.G - targetColor.G);
+            int bDiff = Math.Abs(pixelColor.B - targetColor.B);
+            
+            return rDiff <= tolerance && gDiff <= tolerance && bDiff <= tolerance;
         }
 
         /// <summary>

@@ -1,4 +1,4 @@
-# Powerful Wizard Auto Clicker v2.6.0
+# Powerful Wizard Auto Clicker v2.6.1
 
 A powerful and feature-rich auto clicker with advanced sequence support, visual overlays, smooth mouse trails, and mouse recording capabilities for Windows.
 
