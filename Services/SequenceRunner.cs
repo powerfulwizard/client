@@ -26,6 +26,9 @@ namespace PowerfulWizard.Services
         private Point _currentPosition;
         private Point _targetPosition;
         private Point _bezierControlPoint;
+        private Point _overshootPoint;
+        private bool _useOvershoot;
+        private bool _overshootCompleted;
         private int _movementSteps;
         private int _currentStep;
         private int _movementDuration;
@@ -333,14 +336,57 @@ namespace PowerfulWizard.Services
             _currentPosition = new Point(currentPos.X, currentPos.Y);
             _targetPosition = targetPosition;
 
+            // Calculate movement distance
+            double movementDistance = Math.Sqrt(Math.Pow(_targetPosition.X - _currentPosition.X, 2) + 
+                                              Math.Pow(_targetPosition.Y - _currentPosition.Y, 2));
+            
+            // Check if we should use overshoot for longer paths (300px+)
+            bool useOvershoot = movementDistance >= 300;
+            
+            if (useOvershoot)
+            {
+                // Calculate overshoot point (4-10% beyond target)
+                double overshootDistance = movementDistance * _random.Next(4, 11) / 100.0;
+                double overshootRatio = 1.0 + (overshootDistance / movementDistance);
+                
+                // Randomly choose overshoot direction (left/right or up/down)
+                int direction = _random.Next(2) == 0 ? 1 : -1;
+                
+                // Calculate overshoot point
+                double overshootX = _currentPosition.X + (_targetPosition.X - _currentPosition.X) * overshootRatio;
+                double overshootY = _currentPosition.Y + (_targetPosition.Y - _currentPosition.Y) * overshootRatio;
+                
+                // Add some perpendicular offset for more natural overshoot
+                double perpendicularOffset = _random.Next(15, 35); // 15-35 pixels
+                if (_random.Next(2) == 0)
+                {
+                    overshootX += (_targetPosition.Y - _currentPosition.Y) * perpendicularOffset / movementDistance * direction;
+                    overshootY -= (_targetPosition.X - _currentPosition.X) * perpendicularOffset / movementDistance * direction;
+                }
+                else
+                {
+                    overshootX -= (_targetPosition.Y - _currentPosition.Y) * perpendicularOffset / movementDistance * direction;
+                    overshootY += (_targetPosition.X - _currentPosition.X) * perpendicularOffset / movementDistance * direction;
+                }
+                
+                _overshootPoint = new Point(overshootX, overshootY);
+                _useOvershoot = true;
+                _overshootCompleted = false;
+                
+                System.Diagnostics.Debug.WriteLine($"Overshoot enabled for {movementDistance:F0}px path. Overshoot point: ({_overshootPoint.X:F0}, {_overshootPoint.Y:F0})");
+            }
+            else
+            {
+                _useOvershoot = false;
+                _overshootPoint = targetPosition;
+            }
+
             // Generate Bezier control point for natural movement
-            double midX = (_currentPosition.X + _targetPosition.X) / 2;
-            double midY = (_currentPosition.Y + _targetPosition.Y) / 2;
+            double midX = (_currentPosition.X + _overshootPoint.X) / 2;
+            double midY = (_currentPosition.Y + _overshootPoint.Y) / 2;
             
             // Add random offset - max 30% of the distance or 40px, whichever is smaller
-            double distance = Math.Sqrt(Math.Pow(_targetPosition.X - _currentPosition.X, 2) + 
-                                      Math.Pow(_targetPosition.Y - _currentPosition.Y, 2));
-            double maxOffset = Math.Min(distance * 0.3, 40);
+            double maxOffset = Math.Min(movementDistance * 0.3, 40);
             
             double offsetX = (_random.NextDouble() - 0.5) * maxOffset * 2;
             double offsetY = (_random.NextDouble() - 0.5) * maxOffset * 2;
@@ -348,21 +394,17 @@ namespace PowerfulWizard.Services
             // Keep control point within reasonable bounds
             _bezierControlPoint = new Point(
                 Math.Clamp(midX + offsetX, 
-                      Math.Min(_currentPosition.X, _targetPosition.X) - 20,
-                      Math.Max(_currentPosition.X, _targetPosition.X) + 20),
+                      Math.Min(_currentPosition.X, _overshootPoint.X) - 20,
+                      Math.Max(_currentPosition.X, _overshootPoint.X) + 20),
                 Math.Clamp(midY + offsetY,
-                      Math.Min(_currentPosition.Y, _targetPosition.Y) - 20, 
-                      Math.Max(_currentPosition.Y, _targetPosition.Y) + 20)
+                      Math.Min(_currentPosition.Y, _overshootPoint.Y) - 20, 
+                      Math.Max(_currentPosition.Y, _overshootPoint.Y) + 20)
             );
 
             _currentStep = 0;
             _movementSteps = MOVEMENT_STEPS;
             
             // Calculate base movement duration with distance-based adjustment
-            double movementDistance = Math.Sqrt(Math.Pow(_targetPosition.X - _currentPosition.X, 2) + 
-                                              Math.Pow(_targetPosition.Y - _currentPosition.Y, 2));
-            
-            // Calculate movement duration based on the step's movement speed setting
             switch (step.MovementSpeed)
             {
                 case MovementSpeed.Fast:
@@ -382,8 +424,20 @@ namespace PowerfulWizard.Services
                     break;
             }
             
-            // Apply distance-based adjustment for more natural movement
-            double distanceAdjustment = 1.0 + (movementDistance / 1000.0) * DISTANCE_SPEED_FACTOR;
+            // Apply enhanced distance-based adjustment for more natural movement
+            // Longer paths start faster and slow down more dramatically
+            double distanceAdjustment = 1.0 + (movementDistance / 800.0) * DISTANCE_SPEED_FACTOR;
+            
+            // Additional adjustment: very short paths get even faster
+            if (movementDistance < 100)
+            {
+                distanceAdjustment *= 1.5; // 50% faster for short movements
+            }
+            else if (movementDistance > 500)
+            {
+                distanceAdjustment *= 0.8; // 20% slower for long movements (more dramatic slow-down)
+            }
+            
             _movementDuration = (int)(_movementDuration / distanceAdjustment);
             
             // Ensure duration stays within reasonable bounds
@@ -409,6 +463,18 @@ namespace PowerfulWizard.Services
             if (_currentStep >= _movementSteps)
             {
                 _movementTimer.Stop();
+                
+                // Check if we need to handle overshoot
+                if (_useOvershoot && !_overshootCompleted)
+                {
+                    // Start overshoot return movement to actual target
+                    StartOvershootReturn();
+                    return;
+                }
+                
+                // Add human-like mouse stutter/bump at click time (1-3 pixels)
+                AddMouseStutter();
+                
                 // Movement complete, now perform the click
                 if (_currentSequence != null && _currentStepIndex < _currentSequence.Steps.Count)
                 {
@@ -424,14 +490,17 @@ namespace PowerfulWizard.Services
             // Calculate t from 0.0 to 1.0 properly
             double t = (double)_currentStep / (_movementSteps - 1);
             
+            // Apply easing function for more natural movement (fast start, slow finish)
+            double easedT = ApplyEasingFunction(t);
+            
             // Quadratic Bézier: B(t) = (1-t)^2 * P0 + 2*(1-t)*t * P1 + t^2 * P2
-            double oneMinusT = 1 - t;
+            double oneMinusT = 1 - easedT;
             double x = oneMinusT * oneMinusT * _currentPosition.X + 
-                       2 * oneMinusT * t * _bezierControlPoint.X + 
-                       t * t * _targetPosition.X;
+                       2 * oneMinusT * easedT * _bezierControlPoint.X + 
+                       easedT * easedT * _overshootPoint.X;
             double y = oneMinusT * oneMinusT * _currentPosition.Y + 
-                       2 * oneMinusT * t * _bezierControlPoint.Y + 
-                       t * t * _targetPosition.Y;
+                       2 * oneMinusT * easedT * _bezierControlPoint.Y + 
+                       easedT * easedT * _overshootPoint.Y;
 
             SetCursorPos((int)Math.Round(x), (int)Math.Round(y));
             
@@ -446,6 +515,119 @@ namespace PowerfulWizard.Services
             if (_currentStep < _movementSteps && _speedIntervals.Count > _currentStep)
             {
                 _movementTimer.Interval = TimeSpan.FromMilliseconds(_speedIntervals[_currentStep]);
+            }
+        }
+        
+        /// <summary>
+        /// Adds a human-like mouse stutter/bump at click time (1-3 pixels)
+        /// </summary>
+        private void AddMouseStutter()
+        {
+            try
+            {
+                // Get current cursor position
+                GetCursorPos(out POINT currentPos);
+                var currentPosition = new Point(currentPos.X, currentPos.Y);
+                
+                // Generate random stutter offset (1-3 pixels)
+                int stutterX = _random.Next(-3, 4); // -3 to +3
+                int stutterY = _random.Next(-3, 4); // -3 to +3
+                
+                // Apply stutter
+                var stutterPosition = new Point(
+                    currentPosition.X + stutterX,
+                    currentPosition.Y + stutterY
+                );
+                
+                // Move cursor to stutter position
+                SetCursorPos((int)stutterPosition.X, (int)stutterPosition.Y);
+                
+                // Small delay to make stutter visible
+                System.Threading.Thread.Sleep(10);
+                
+                // Return to original position
+                SetCursorPos((int)currentPosition.X, (int)currentPosition.Y);
+                
+                System.Diagnostics.Debug.WriteLine($"Mouse stutter applied: ({stutterX}, {stutterY}) pixels");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Mouse stutter error: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Applies easing function for more natural movement (fast start, slow finish)
+        /// </summary>
+        private double ApplyEasingFunction(double t)
+        {
+            // Ease-out function: starts fast, slows down towards the end
+            // This creates more human-like movement patterns
+            return 1.0 - Math.Pow(1.0 - t, 3); // Cubic ease-out
+        }
+        
+        /// <summary>
+        /// Starts the return movement from overshoot point to actual target
+        /// </summary>
+        private void StartOvershootReturn()
+        {
+            try
+            {
+                // Set up return movement from overshoot point to actual target
+                _currentPosition = _overshootPoint;
+                _overshootPoint = _targetPosition;
+                _overshootCompleted = true;
+                
+                // Generate new Bezier control point for return movement
+                double midX = (_currentPosition.X + _overshootPoint.X) / 2;
+                double midY = (_currentPosition.Y + _overshootPoint.Y) / 2;
+                
+                // Add smaller random offset for return movement
+                double returnDistance = Math.Sqrt(Math.Pow(_overshootPoint.X - _currentPosition.X, 2) + 
+                                                Math.Pow(_overshootPoint.Y - _currentPosition.Y, 2));
+                double maxOffset = Math.Min(returnDistance * 0.2, 20); // Smaller offset for return
+                
+                double offsetX = (_random.NextDouble() - 0.5) * maxOffset * 2;
+                double offsetY = (_random.NextDouble() - 0.5) * maxOffset * 2;
+                
+                _bezierControlPoint = new Point(
+                    Math.Clamp(midX + offsetX, 
+                          Math.Min(_currentPosition.X, _overshootPoint.X) - 15,
+                          Math.Max(_currentPosition.X, _overshootPoint.X) + 15),
+                    Math.Clamp(midY + offsetY,
+                          Math.Min(_currentPosition.Y, _overshootPoint.Y) - 15, 
+                          Math.Max(_currentPosition.Y, _overshootPoint.Y) + 15)
+                );
+                
+                // Reset movement state for return
+                _currentStep = 0;
+                _movementSteps = MOVEMENT_STEPS;
+                
+                // Calculate return movement duration (faster than initial movement)
+                int returnDuration = (int)(_movementDuration * 0.6); // 40% faster return
+                returnDuration = Math.Max(MIN_MOVEMENT_DURATION_MS, Math.Min(MAX_MOVEMENT_DURATION_MS, returnDuration));
+                
+                // Create variable speed intervals for return movement
+                _speedIntervals = GenerateVariableSpeedIntervals(returnDuration, _movementSteps);
+                
+                // Set timer interval and restart
+                _movementTimer.Interval = TimeSpan.FromMilliseconds(_speedIntervals[0]);
+                _movementTimer.Start();
+                
+                System.Diagnostics.Debug.WriteLine($"Overshoot return started to target: ({_targetPosition.X:F0}, {_targetPosition.Y:F0})");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Overshoot return error: {ex.Message}");
+                // Fallback: complete movement and continue
+                _overshootCompleted = true;
+                AddMouseStutter();
+                if (_currentSequence != null && _currentStepIndex < _currentSequence.Steps.Count)
+                {
+                    var step = _currentSequence.Steps[_currentStepIndex];
+                    PerformClick(step);
+                    HandleClickValidationAndRetry(step);
+                }
             }
         }
         
