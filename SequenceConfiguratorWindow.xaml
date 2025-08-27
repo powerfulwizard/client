@@ -13,6 +13,9 @@
         <local:IsLoopCountVisibleConverter x:Key="IsLoopCountVisibleConverter"/>
         <local:EnumToIndexConverter x:Key="EnumToIndexConverter"/>
         <local:IsCustomSpeedConverter x:Key="IsCustomSpeedConverter"/>
+        <local:TargetModeToIndexConverter x:Key="TargetModeToIndexConverter"/>
+        <local:IsColorClickModeConverter x:Key="IsColorClickModeConverter"/>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         
                           <!-- Dark Mode Styles - Matching Main Window -->
          <Style TargetType="ComboBox">
@@ -268,6 +271,51 @@
                                             </StackPanel>
                                         </Grid>
                                         
+                                        <!-- Target Mode -->
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <Label Grid.Column="0" Content="Target Mode:" Foreground="White"/>
+                                            <ComboBox Grid.Column="1" Width="120" Margin="5,0,15,0" 
+                                                      SelectedIndex="{Binding TargetMode, Converter={StaticResource TargetModeToIndexConverter}}">
+                                                <ComboBoxItem Content="Click Area"/>
+                                                <ComboBoxItem Content="Color Click"/>
+                                            </ComboBox>
+                                            
+                                            <Label Grid.Column="2" Content="Color Settings:" Foreground="White"/>
+                                            <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                                <Button Content="Set Color" Width="80" Height="25"
+                                                        Click="OnSetColorClick" Tag="{Binding}"
+                                                        IsEnabled="{Binding TargetMode, Converter={StaticResource IsColorClickModeConverter}}"
+                                                        Style="{StaticResource SetAreaButtonStyle}" Margin="0,0,5,0"/>
+                                                <Button Content="Set Area" Width="80" Height="25"
+                                                        Click="OnSetColorAreaClick" Tag="{Binding}"
+                                                        IsEnabled="{Binding TargetMode, Converter={StaticResource IsColorClickModeConverter}}"
+                                                        Style="{StaticResource SetAreaButtonStyle}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                        
+                                        <!-- Color Area Display -->
+                                        <Grid Margin="0,10,0,0" Visibility="{Binding TargetMode, Converter={StaticResource IsColorClickModeConverter}}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <Label Grid.Column="0" Content="Color Area:" Foreground="White" VerticalAlignment="Center"/>
+                                            <Border Grid.Column="1" Background="#1E1E1E" BorderBrush="#3F3F46" BorderThickness="1" 
+                                                    Height="40" Margin="5,0,0,0" CornerRadius="3">
+                                                <TextBlock Text="{Binding ColorSearchArea, StringFormat='X: {0:F0}, Y: {1:F0}, W: {2:F0}, H: {3:F0}'}" 
+                                                           Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Center" 
+                                                           FontFamily="Consolas" FontSize="11"/>
+                                            </Border>
+                                        </Grid>
+                                        
                                         <!-- Movement Speed -->
                                         <Grid Margin="0,0,0,10">
                                             <Grid.ColumnDefinitions>
@@ -308,6 +356,22 @@
                                              <Button Grid.Column="2" Content="Set Area" Width="70" Height="25"
                                                      Click="OnSetClickAreaClick" Tag="{Binding}"
                                                      IsEnabled="{Binding UseRandomPosition}" Style="{StaticResource SetAreaButtonStyle}"/>
+                                         </Grid>
+                                         
+                                         <!-- Area Display -->
+                                         <Grid Margin="0,10,0,0" Visibility="{Binding UseRandomPosition, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                             <Grid.ColumnDefinitions>
+                                                 <ColumnDefinition Width="Auto"/>
+                                                 <ColumnDefinition Width="*"/>
+                                             </Grid.ColumnDefinitions>
+                                             
+                                             <Label Grid.Column="0" Content="Selected Area:" Foreground="White" VerticalAlignment="Center"/>
+                                             <Border Grid.Column="1" Background="#1E1E1E" BorderBrush="#3F3F46" BorderThickness="1" 
+                                                     Height="40" Margin="5,0,0,0" CornerRadius="3">
+                                                 <TextBlock Text="{Binding ClickArea, StringFormat='X: {0:F0}, Y: {1:F0}, W: {2:F0}, H: {3:F0}'}" 
+                                                            Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Center" 
+                                                            FontFamily="Consolas" FontSize="11"/>
+                                             </Border>
                                          </Grid>
                                     </StackPanel>
                                 </Expander>

@@ -24,5 +24,8 @@
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.0" />
+        <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+        <PackageReference Include="OpenCvSharp4" Version="4.8.0.20230708" />
+        <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.8.0.20230708" />
     </ItemGroup>
 </Project>

@@ -127,6 +127,39 @@ namespace PowerfulWizard
                 }
             }
         }
+
+        private void OnSetColorClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is SequenceStep step)
+            {
+                var colorPickerWindow = new ColorPickerWindow(GlobalMouseTrailWindow.CurrentMouseTrailService);
+                
+                // Set the current color and tolerance in the window
+                colorPickerWindow.SelectedColor = step.TargetColor;
+                colorPickerWindow.ColorTolerance = step.ColorTolerance;
+                colorPickerWindow.UpdateColorValues();
+                colorPickerWindow.UpdateColorPreview();
+                colorPickerWindow.ToleranceSlider.Value = step.ColorTolerance;
+                
+                if (colorPickerWindow.ShowDialog() == true)
+                {
+                    step.TargetColor = colorPickerWindow.SelectedColor;
+                    step.ColorTolerance = colorPickerWindow.ColorTolerance;
+                }
+            }
+        }
+        
+        private void OnSetColorAreaClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is SequenceStep step)
+            {
+                var clickAreaWindow = new ClickAreaWindow(this);
+                if (clickAreaWindow.ShowDialog() == true)
+                {
+                    step.ColorSearchArea = clickAreaWindow.SelectedArea;
+                }
+            }
+        }
         
         private void OnUseSequenceClick(object sender, RoutedEventArgs e)
         {
@@ -281,7 +314,11 @@ namespace PowerfulWizard
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            throw new NotImplementedException();
+            if (value is int index && targetType == typeof(MovementSpeed))
+            {
+                return (MovementSpeed)index;
+            }
+            return MovementSpeed.Medium;
         }
     }
     
@@ -300,5 +337,43 @@ namespace PowerfulWizard
         {
             throw new NotImplementedException();
         }
-            }
     }
+
+    public class TargetModeToIndexConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is TargetMode targetMode)
+            {
+                return (int)targetMode;
+            }
+            return 0;
+        }
+        
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is int index)
+            {
+                return (TargetMode)index;
+            }
+            return TargetMode.ClickArea;
+        }
+    }
+
+    public class IsColorClickModeConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is TargetMode targetMode)
+            {
+                return targetMode == TargetMode.ColorClick;
+            }
+            return false;
+        }
+        
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

@@ -41,6 +41,19 @@ namespace PowerfulWizard.Services
         
         public Canvas TrailCanvas => _trailCanvas;
         
+        // Temporary disable/enable for color selection
+        private bool _temporarilyDisabled = false;
+        
+        public void TemporarilyDisable()
+        {
+            _temporarilyDisabled = true;
+        }
+        
+        public void ReEnable()
+        {
+            _temporarilyDisabled = false;
+        }
+        
         public void LoadSettings()
         {
             try
@@ -84,7 +97,7 @@ namespace PowerfulWizard.Services
         
         public void AddTrailPoint(Point position)
         {
-            if (!_isEnabled) return;
+            if (!_isEnabled || _temporarilyDisabled) return;
             
             // Skip if position is too close to the last point (reduces noise)
             if (_trailPoints.Count > 0)

@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
+using System.Windows.Media;
 using PowerfulWizard.Models;
 using PowerfulWizard.Services;
 
@@ -32,7 +33,12 @@ namespace PowerfulWizard
         private uint playHotkeyKey;
         private bool useRandomPosition;
         private Rect clickArea;
+        private Rect colorSearchArea; // New field for color search area
         private OverlayWindow? overlayWindow;
+        private System.Windows.Media.Color targetColor = System.Windows.Media.Colors.Red;
+        private int colorTolerance = 30;
+        private System.Windows.Point? cachedColorTarget; // Cache the found color target
+        private bool isColorDetectionRunning = false;
         private const int MOD_CONTROL = 0x0002;
         private const int MOD_SHIFT = 0x0004;
         private const int MOD_ALT = 0x0001;
@@ -220,6 +226,20 @@ namespace PowerfulWizard
                 double height = double.TryParse(ConfigurationManager.AppSettings["ClickAreaHeight"], out double ch) ? ch : 100;
                 clickArea = new Rect(x, y, width, height);
                 currentClickType = Enum.TryParse(ConfigurationManager.AppSettings["ClickType"], out ClickType clickType) ? clickType : ClickType.LeftClick;
+                
+                // Load color settings
+                if (System.Windows.Media.ColorConverter.ConvertFromString(ConfigurationManager.AppSettings["TargetColor"]) is System.Windows.Media.Color color)
+                {
+                    targetColor = color;
+                }
+                colorTolerance = int.TryParse(ConfigurationManager.AppSettings["ColorTolerance"], out int tolerance) ? tolerance : 30;
+                
+                // Load color search area settings
+                double searchX = double.TryParse(ConfigurationManager.AppSettings["ColorSearchAreaX"], out double csx) ? csx : 0;
+                double searchY = double.TryParse(ConfigurationManager.AppSettings["ColorSearchAreaY"], out double csy) ? csy : 0;
+                double searchWidth = double.TryParse(ConfigurationManager.AppSettings["ColorSearchAreaWidth"], out double csw) ? csw : 0;
+                double searchHeight = double.TryParse(ConfigurationManager.AppSettings["ColorSearchAreaHeight"], out double csh) ? csh : 0;
+                colorSearchArea = new Rect(searchX, searchY, searchWidth, searchHeight);
             }
             catch
             {
@@ -233,12 +253,32 @@ namespace PowerfulWizard
                 playHotkeyKey = VK_F9;
                 useRandomPosition = false;
                 clickArea = new Rect(0, 0, 100, 100);
+                colorSearchArea = new Rect(0, 0, 0, 0); // Empty search area
                 currentClickType = ClickType.LeftClick;
+                targetColor = System.Windows.Media.Colors.Red;
+                colorTolerance = 30;
             }
 
+            // UI initialization will be done in OnWindowLoaded after XAML is loaded
+            
+            if (clickArea.Width > 0 && clickArea.Height > 0)
+            {
+                overlayWindow = new OverlayWindow(clickArea);
+                overlayWindow.Show();
+            }
+            
+            // Global mouse trail window is already initialized
+        }
+
+        private void OnWindowLoaded(object sender, RoutedEventArgs e)
+        {
+            // Initialize UI elements after XAML is fully loaded
             UseRandomPositionCheck.IsChecked = useRandomPosition;
             SetClickAreaButton.IsEnabled = useRandomPosition;
             ClickTypeComboBox.SelectedIndex = (int)currentClickType;
+            
+            // Initialize TargetModeComboBox (default to Click Area mode)
+            TargetModeComboBox.SelectedIndex = 0;
             
             // Load movement speed settings
             try
@@ -260,17 +300,10 @@ namespace PowerfulWizard
                 CustomSpeedInput.IsEnabled = false;
             }
             
-            if (clickArea.Width > 0 && clickArea.Height > 0)
-            {
-                overlayWindow = new OverlayWindow(clickArea);
-                overlayWindow.Show();
-            }
+            // Initialize PlaybackSpeedComboBox (default to 1.0x)
+            PlaybackSpeedComboBox.SelectedIndex = 1;
             
-            // Global mouse trail window is already initialized
-        }
-
-        private void OnWindowLoaded(object sender, RoutedEventArgs e)
-        {
+            // Register hotkeys and setup hooks
             IntPtr hWnd = new WindowInteropHelper(this).Handle;
             RegisterHotKey(hWnd, HOTKEY_ID_START, startHotkeyModifiers, startHotkeyKey);
             RegisterHotKey(hWnd, HOTKEY_ID_STOP, stopHotkeyModifiers, stopHotkeyKey);
@@ -278,12 +311,13 @@ namespace PowerfulWizard
             RegisterHotKey(hWnd, HOTKEY_ID_PLAY, playHotkeyModifiers, playHotkeyKey);
             HwndSource source = HwndSource.FromHwnd(hWnd);
             source.AddHook(WndProc);
+            
+            // Update status labels
             StatusLabel.Content = "Status: Stopped";
             NextClickLabel.Content = "Next Click: -- ms";
             MovementSpeedLabel.Content = "Movement Speed: -- ms";
             StartHotkeyLabel.Content = $"Hotkey: {GetHotkeyText(startHotkeyModifiers, startHotkeyKey)}";
             StopHotkeyLabel.Content = $"Hotkey: {GetHotkeyText(stopHotkeyModifiers, stopHotkeyKey)}";
-
         }
 
         private void OnWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -420,6 +454,8 @@ namespace PowerfulWizard
             }
         }
 
+
+
         private void OnUseRandomPositionChecked(object? sender, RoutedEventArgs e)
         {
             useRandomPosition = UseRandomPositionCheck.IsChecked == true;
@@ -430,6 +466,42 @@ namespace PowerfulWizard
                 overlayWindow = null!;
             }
             SaveSettings();
+        }
+
+        private void OnTargetModeChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // Add null check to prevent crash during XAML loading
+            if (SetColorButton == null || SetSearchAreaButton == null) return;
+            
+            if (TargetModeComboBox.SelectedIndex == 1) // Color Click
+            {
+                SetColorButton.IsEnabled = true;
+                SetSearchAreaButton.IsEnabled = true;
+            }
+            else
+            {
+                SetColorButton.IsEnabled = false;
+                SetSearchAreaButton.IsEnabled = false;
+            }
+        }
+
+        private void OnSetColorClick(object sender, RoutedEventArgs e)
+        {
+            var colorPickerWindow = new ColorPickerWindow(GlobalMouseTrailWindow.CurrentMouseTrailService);
+            
+            // Set the current color and tolerance in the window
+            colorPickerWindow.SelectedColor = targetColor;
+            colorPickerWindow.ColorTolerance = colorTolerance;
+            colorPickerWindow.UpdateColorValues();
+            colorPickerWindow.UpdateColorPreview();
+            colorPickerWindow.ToleranceSlider.Value = colorTolerance;
+            
+            if (colorPickerWindow.ShowDialog() == true)
+            {
+                targetColor = colorPickerWindow.SelectedColor;
+                colorTolerance = colorPickerWindow.ColorTolerance;
+                System.Diagnostics.Debug.WriteLine($"Color picker set: R={targetColor.R}, G={targetColor.G}, B={targetColor.B}, Tolerance={colorTolerance}");
+            }
         }
 
         private void OnSetClickAreaClick(object? sender, RoutedEventArgs e)
@@ -451,6 +523,188 @@ namespace PowerfulWizard
             }
         }
 
+        private void OnSetSearchAreaClick(object? sender, RoutedEventArgs e)
+        {
+            var searchAreaWindow = new ClickAreaWindow(this);
+            searchAreaWindow.Title = "Set Color Search Area";
+            if (searchAreaWindow.ShowDialog() == true)
+            {
+                colorSearchArea = searchAreaWindow.SelectedArea;
+                System.Diagnostics.Debug.WriteLine($"Search area set: {colorSearchArea}");
+                
+                // Show visual indicator of search area
+                ShowSearchAreaIndicator(colorSearchArea);
+                
+                SaveSettings();
+            }
+        }
+
+        private async void StartBackgroundColorDetection()
+        {
+            if (isColorDetectionRunning) return;
+            
+            isColorDetectionRunning = true;
+            cachedColorTarget = null;
+            
+            // Run color detection in background
+            await Task.Run(async () =>
+            {
+                while (isColorDetectionRunning)
+                {
+                    try
+                    {
+                        Rect searchArea;
+                        if (colorSearchArea.Width > 0 && colorSearchArea.Height > 0)
+                        {
+                            searchArea = colorSearchArea;
+                        }
+                        else
+                        {
+                            // Fallback to screen area
+                            searchArea = new Rect(0, 0, System.Windows.SystemParameters.PrimaryScreenWidth, System.Windows.SystemParameters.PrimaryScreenHeight);
+                        }
+                        
+                        System.Diagnostics.Debug.WriteLine($"Background search using: R={targetColor.R}, G={targetColor.G}, B={targetColor.B}, Tolerance={colorTolerance}");
+                        
+                        // Debug the color detection for troubleshooting
+                        ColorDetectionService.DebugColorDetection(targetColor, searchArea, colorTolerance);
+                        
+                        var matchingPoint = await ColorDetectionService.GetRandomMatchingPointAsync(targetColor, colorTolerance, searchArea);
+                        
+                        if (matchingPoint.HasValue)
+                        {
+                            // Update the cached target on the UI thread
+                            await Dispatcher.InvokeAsync(() =>
+                            {
+                                cachedColorTarget = matchingPoint.Value;
+                                StatusLabel.Content = $"Status: Running - Color target found at ({matchingPoint.Value.X}, {matchingPoint.Value.Y})";
+                            });
+                        }
+                        else
+                        {
+                            // Update status when no color is found
+                            await Dispatcher.InvokeAsync(() =>
+                            {
+                                StatusLabel.Content = "Status: Running - Searching for color...";
+                            });
+                        }
+                        
+                        // Wait a bit before next search
+                        await Task.Delay(50); // Faster updates
+                    }
+                    catch (Exception)
+                    {
+                        // Ignore errors and continue
+                        await Task.Delay(50);
+                    }
+                }
+            });
+        }
+
+        private void StopBackgroundColorDetection()
+        {
+            isColorDetectionRunning = false;
+            cachedColorTarget = null;
+        }
+
+        private void ShowClickIndicator(Point position)
+        {
+            // Click indicator removed to prevent interference with color detection
+            System.Diagnostics.Debug.WriteLine($"Click at ({position.X}, {position.Y}) - indicator disabled");
+        }
+
+        private void TestColorAtMousePosition()
+        {
+            var color = ColorDetectionService.GetColorAtCurrentPosition();
+            System.Diagnostics.Debug.WriteLine($"Color at current mouse position: R={color.R}, G={color.G}, B={color.B}");
+            
+            // Test color matching directly
+            if (targetColor != null)
+            {
+                int rDiff = Math.Abs(color.R - targetColor.R);
+                int gDiff = Math.Abs(color.G - targetColor.G);
+                int bDiff = Math.Abs(color.B - targetColor.B);
+                bool isMatch = rDiff <= colorTolerance && gDiff <= colorTolerance && bDiff <= colorTolerance;
+                
+                System.Diagnostics.Debug.WriteLine($"Color match test: Target({targetColor.R},{targetColor.G},{targetColor.B}) vs Mouse({color.R},{color.G},{color.B}) - Diffs({rDiff},{gDiff},{bDiff}) - Match: {isMatch}");
+            }
+            
+            // Also test if the search area is valid
+            if (colorSearchArea.Width > 0 && colorSearchArea.Height > 0)
+            {
+                var testColor = ColorDetectionService.GetPixelAt((int)colorSearchArea.Left, (int)colorSearchArea.Top);
+                System.Diagnostics.Debug.WriteLine($"Color at search area top-left ({colorSearchArea.Left}, {colorSearchArea.Top}): R={testColor.R}, G={testColor.G}, B={testColor.B}");
+                
+                // Test a few more points in the search area
+                var centerColor = ColorDetectionService.GetPixelAt((int)(colorSearchArea.Left + colorSearchArea.Width/2), (int)(colorSearchArea.Top + colorSearchArea.Height/2));
+                var bottomRightColor = ColorDetectionService.GetPixelAt((int)(colorSearchArea.Right - 10), (int)(colorSearchArea.Bottom - 10));
+                
+                System.Diagnostics.Debug.WriteLine($"Color at search area center: R={centerColor.R}, G={centerColor.G}, B={centerColor.B}");
+                System.Diagnostics.Debug.WriteLine($"Color at search area bottom-right: R={bottomRightColor.R}, G={bottomRightColor.G}, B={bottomRightColor.B}");
+                
+                // Test color matching for these points too
+                if (targetColor != null)
+                {
+                    TestColorMatch("top-left", testColor);
+                    TestColorMatch("center", centerColor);
+                    TestColorMatch("bottom-right", bottomRightColor);
+                }
+                
+                MessageBox.Show($"Mouse position: R={color.R}, G={color.G}, B={color.B}\nSearch area top-left: R={testColor.R}, G={testColor.G}, B={testColor.B}\nSearch area center: R={centerColor.R}, G={centerColor.G}, B={centerColor.B}\nSearch area bottom-right: R={bottomRightColor.R}, G={bottomRightColor.G}, B={bottomRightColor.B}", "Color Test");
+            }
+            else
+            {
+                MessageBox.Show($"Color at mouse position: R={color.R}, G={color.G}, B={color.B}", "Color Test");
+            }
+        }
+
+        private void TestColorMatch(string location, System.Windows.Media.Color color)
+        {
+            if (targetColor != null)
+            {
+                int rDiff = Math.Abs(color.R - targetColor.R);
+                int gDiff = Math.Abs(color.G - targetColor.G);
+                int bDiff = Math.Abs(color.B - targetColor.B);
+                bool isMatch = rDiff <= colorTolerance && gDiff <= colorTolerance && bDiff <= colorTolerance;
+                
+                System.Diagnostics.Debug.WriteLine($"Color match test ({location}): Target({targetColor.R},{targetColor.G},{targetColor.B}) vs Found({color.R},{color.G},{color.B}) - Diffs({rDiff},{gDiff},{bDiff}) - Match: {isMatch}");
+            }
+        }
+
+
+
+        private void ShowSearchAreaIndicator(Rect searchArea)
+        {
+            // Create a temporary window to show the search area
+            var indicator = new System.Windows.Window
+            {
+                Width = searchArea.Width,
+                Height = searchArea.Height,
+                Left = searchArea.Left,
+                Top = searchArea.Top,
+                WindowStyle = WindowStyle.None,
+                AllowsTransparency = true,
+                Background = System.Windows.Media.Brushes.Yellow,
+                Opacity = 0.3,
+                Topmost = true,
+                ShowInTaskbar = false
+            };
+            
+            indicator.Show();
+            
+            // Hide after 3 seconds
+            var timer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(3)
+            };
+            timer.Tick += (s, e) =>
+            {
+                indicator.Close();
+                timer.Stop();
+            };
+            timer.Start();
+        }
+
         private void SaveSettings()
         {
             try
@@ -464,12 +718,24 @@ namespace PowerfulWizard
                 config.AppSettings.Settings.Remove("ClickType");
                 config.AppSettings.Settings.Remove("MovementSpeed");
                 config.AppSettings.Settings.Remove("CustomMovementSpeed");
+                config.AppSettings.Settings.Remove("TargetColor");
+                config.AppSettings.Settings.Remove("ColorTolerance");
+                config.AppSettings.Settings.Remove("ColorSearchAreaX");
+                config.AppSettings.Settings.Remove("ColorSearchAreaY");
+                config.AppSettings.Settings.Remove("ColorSearchAreaWidth");
+                config.AppSettings.Settings.Remove("ColorSearchAreaHeight");
                 config.AppSettings.Settings.Add("UseRandomPosition", useRandomPosition.ToString());
                 config.AppSettings.Settings.Add("ClickAreaX", clickArea.X.ToString());
                 config.AppSettings.Settings.Add("ClickAreaY", clickArea.Y.ToString());
                 config.AppSettings.Settings.Add("ClickAreaWidth", clickArea.Width.ToString());
                 config.AppSettings.Settings.Add("ClickAreaHeight", clickArea.Height.ToString());
                 config.AppSettings.Settings.Add("ClickType", currentClickType.ToString());
+                config.AppSettings.Settings.Add("TargetColor", targetColor.ToString());
+                config.AppSettings.Settings.Add("ColorTolerance", colorTolerance.ToString());
+                config.AppSettings.Settings.Add("ColorSearchAreaX", colorSearchArea.X.ToString());
+                config.AppSettings.Settings.Add("ColorSearchAreaY", colorSearchArea.Y.ToString());
+                config.AppSettings.Settings.Add("ColorSearchAreaWidth", colorSearchArea.Width.ToString());
+                config.AppSettings.Settings.Add("ColorSearchAreaHeight", colorSearchArea.Height.ToString());
                 
                 // Add null checks for movement speed settings
                 if (MovementSpeedComboBox?.SelectedIndex >= 0)
@@ -514,6 +780,13 @@ namespace PowerfulWizard
                         MessageBox.Show("Please set a valid click area for random position.", "Invalid Click Area");
                         return;
                     }
+                    
+                    // Start background color detection if in color click mode
+                    if (TargetModeComboBox.SelectedIndex == 1) // Color Click
+                    {
+                        StartBackgroundColorDetection();
+                    }
+                    
                     StartButton.IsEnabled = false;
                     StopButton.IsEnabled = true;
                     StatusLabel.Content = "Status: Running";
@@ -549,6 +822,7 @@ namespace PowerfulWizard
                 timer.Stop();
                 countdownTimer.Stop();
                 movementTimer.Stop();
+                StopBackgroundColorDetection(); // Stop background color detection
                 StartButton.IsEnabled = true;
                 StopButton.IsEnabled = false;
                 StatusLabel.Content = "Status: Stopped";
@@ -691,100 +965,151 @@ namespace PowerfulWizard
 
         private void SimulateMouseClick()
         {
-            if (useRandomPosition && clickArea.Width > 0 && clickArea.Height > 0)
+            GetCursorPos(out POINT currentPos);
+            currentPosition = new Point(currentPos.X, currentPos.Y);
+            
+            // Determine target position based on target mode
+            if (TargetModeComboBox.SelectedIndex == 1) // Color Click
             {
-                GetCursorPos(out POINT currentPos);
-                currentPosition = new Point(currentPos.X, currentPos.Y);
+                // Use cached color target if available, otherwise fallback to random position
+                if (cachedColorTarget.HasValue)
+                {
+                    targetPosition = cachedColorTarget.Value;
+                    cachedColorTarget = null; // Use it once
+                    StatusLabel.Content = $"Status: Running - Clicking color target at ({targetPosition.X}, {targetPosition.Y})";
+                    
+                    // Show a temporary visual indicator where we're clicking
+                    ShowClickIndicator(targetPosition);
+                }
+                else
+                {
+                    // Fallback to random position in search area
+                    Rect searchArea;
+                    if (colorSearchArea.Width > 0 && colorSearchArea.Height > 0)
+                    {
+                        searchArea = colorSearchArea;
+                    }
+                    else
+                    {
+                        // Fallback to searching around current mouse position
+                        GetCursorPos(out POINT currentMousePos);
+                        double searchRadius = 200;
+                        
+                        searchArea = new Rect(
+                            Math.Max(0, currentMousePos.X - searchRadius),
+                            Math.Max(0, currentMousePos.Y - searchRadius),
+                            Math.Min(searchRadius * 2, System.Windows.SystemParameters.PrimaryScreenWidth - Math.Max(0, currentMousePos.X - searchRadius)),
+                            Math.Min(searchRadius * 2, System.Windows.SystemParameters.PrimaryScreenHeight - Math.Max(0, currentMousePos.Y - searchRadius))
+                        );
+                    }
+                    
+                    var random = new Random();
+                    targetPosition = new Point(
+                        searchArea.X + random.NextDouble() * searchArea.Width,
+                        searchArea.Y + random.NextDouble() * searchArea.Height
+                    );
+                    StatusLabel.Content = $"Status: Running - No color found, clicking random at ({targetPosition.X}, {targetPosition.Y})";
+                }
+            }
+            else if (useRandomPosition && clickArea.Width > 0 && clickArea.Height > 0)
+            {
+                // Traditional random position within click area
                 targetPosition = new Point(
                     clickArea.X + random.NextDouble() * clickArea.Width,
                     clickArea.Y + random.NextDouble() * clickArea.Height
                 );
-
-                // Simpler, more natural control point generation
-                // Take the midpoint and add some controlled randomness
-                double midX = (currentPosition.X + targetPosition.X) / 2;
-                double midY = (currentPosition.Y + targetPosition.Y) / 2;
-                
-                // Add random offset - max 30% of the distance or 40px, whichever is smaller
-                double distance = Math.Sqrt(Math.Pow(targetPosition.X - currentPosition.X, 2) + 
-                                          Math.Pow(targetPosition.Y - currentPosition.Y, 2));
-                double maxOffset = Math.Min(distance * 0.3, 40);
-                
-                double offsetX = (random.NextDouble() - 0.5) * maxOffset * 2;
-                double offsetY = (random.NextDouble() - 0.5) * maxOffset * 2;
-                
-                // Keep control point within reasonable bounds
-                bezierControlPoint = new Point(
-                    Math.Clamp(midX + offsetX, 
-                              Math.Min(currentPosition.X, targetPosition.X) - 20,
-                              Math.Max(currentPosition.X, targetPosition.X) + 20),
-                    Math.Clamp(midY + offsetY,
-                              Math.Min(currentPosition.Y, targetPosition.Y) - 20, 
-                              Math.Max(currentPosition.Y, targetPosition.Y) + 20)
-                );
-
-                currentStep = 0;
-                movementSteps = MOVEMENT_STEPS;
-                
-                // Calculate base movement duration with distance-based adjustment
-                double movementDistance = Math.Sqrt(Math.Pow(targetPosition.X - currentPosition.X, 2) + 
-                                                  Math.Pow(targetPosition.Y - currentPosition.Y, 2));
-                
-                // Get movement duration from UI settings
-                int baseDuration;
-                if (MovementSpeedComboBox?.SelectedIndex >= 0)
-                {
-                    switch (MovementSpeedComboBox.SelectedIndex)
-                    {
-                        case 0: // Fast
-                            baseDuration = random.Next(80, 150);
-                            break;
-                        case 1: // Medium
-                            baseDuration = random.Next(150, 250);
-                            break;
-                        case 2: // Slow
-                            baseDuration = random.Next(250, 400);
-                            break;
-                        case 3: // Custom
-                            if (CustomSpeedInput?.Text != null && int.TryParse(CustomSpeedInput.Text, out int customSpeed))
-                                baseDuration = customSpeed;
-                            else
-                                baseDuration = 150;
-                            break;
-                        default:
-                            baseDuration = random.Next(150, 250); // Default to Medium
-                            break;
-                    }
-                }
-                else
-                {
-                    // Default to Medium if UI not ready
-                    baseDuration = random.Next(150, 250);
-                }
-                
-                // Adjust duration based on distance (longer distance = slightly faster movement)
-                double distanceAdjustment = 1.0 + (movementDistance / 1000.0) * DISTANCE_SPEED_FACTOR;
-                movementDuration = (int)(baseDuration / distanceAdjustment);
-                
-                // Ensure duration stays within reasonable bounds
-                movementDuration = Math.Max(MIN_MOVEMENT_DURATION_MS, Math.Min(MAX_MOVEMENT_DURATION_MS, movementDuration));
-                
-                // Create variable speed intervals for more human-like movement
-                var speedIntervals = GenerateVariableSpeedIntervals(movementDuration, movementSteps);
-                
-                // Store the intervals for use in movement timer
-                _speedIntervals = speedIntervals;
-                
-                // Start with first interval
-                movementTimer.Interval = TimeSpan.FromMilliseconds(speedIntervals[0]);
-                
-                MovementSpeedLabel.Content = $"Movement Speed: {movementDuration} ms";
-                movementTimer.Start();
             }
             else
             {
-                PerformMouseClick();
+                // No valid target - pause
+                timer.Stop();
+                countdownTimer.Stop();
+                StartButton.IsEnabled = true;
+                StopButton.IsEnabled = false;
+                StatusLabel.Content = "Status: Paused - No valid target area";
+                return;
             }
+
+            // Simpler, more natural control point generation
+            // Take the midpoint and add some controlled randomness
+            double midX = (currentPosition.X + targetPosition.X) / 2;
+            double midY = (currentPosition.Y + targetPosition.Y) / 2;
+                
+            // Add random offset - max 30% of the distance or 40px, whichever is smaller
+            double distance = Math.Sqrt(Math.Pow(targetPosition.X - currentPosition.X, 2) + 
+                                      Math.Pow(targetPosition.Y - currentPosition.Y, 2));
+            double maxOffset = Math.Min(distance * 0.3, 40);
+            
+            double offsetX = (random.NextDouble() - 0.5) * maxOffset * 2;
+            double offsetY = (random.NextDouble() - 0.5) * maxOffset * 2;
+            
+            // Keep control point within reasonable bounds
+            bezierControlPoint = new Point(
+                Math.Clamp(midX + offsetX, 
+                          Math.Min(currentPosition.X, targetPosition.X) - 20,
+                          Math.Max(currentPosition.X, targetPosition.X) + 20),
+                Math.Clamp(midY + offsetY,
+                          Math.Min(currentPosition.Y, targetPosition.Y) - 20, 
+                          Math.Max(currentPosition.Y, targetPosition.Y) + 20)
+            );
+
+            currentStep = 0;
+            movementSteps = MOVEMENT_STEPS;
+            
+            // Calculate base movement duration with distance-based adjustment
+            double movementDistance = Math.Sqrt(Math.Pow(targetPosition.X - currentPosition.X, 2) + 
+                                              Math.Pow(targetPosition.Y - currentPosition.Y, 2));
+            
+            // Get movement duration from UI settings
+            int baseDuration;
+            if (MovementSpeedComboBox?.SelectedIndex >= 0)
+            {
+                switch (MovementSpeedComboBox.SelectedIndex)
+                {
+                    case 0: // Fast
+                        baseDuration = random.Next(80, 150);
+                        break;
+                    case 1: // Medium
+                        baseDuration = random.Next(150, 250);
+                        break;
+                    case 2: // Slow
+                        baseDuration = random.Next(250, 400);
+                        break;
+                    case 3: // Custom
+                        if (CustomSpeedInput?.Text != null && int.TryParse(CustomSpeedInput.Text, out int customSpeed))
+                            baseDuration = customSpeed;
+                        else
+                            baseDuration = 150;
+                        break;
+                    default:
+                        baseDuration = random.Next(150, 250); // Default to Medium
+                        break;
+                }
+            }
+            else
+            {
+                // Default to Medium if UI not ready
+                baseDuration = random.Next(150, 250);
+            }
+            
+            // Adjust duration based on distance (longer distance = slightly faster movement)
+            double distanceAdjustment = 1.0 + (movementDistance / 1000.0) * DISTANCE_SPEED_FACTOR;
+            movementDuration = (int)(baseDuration / distanceAdjustment);
+            
+            // Ensure duration stays within reasonable bounds
+            movementDuration = Math.Max(MIN_MOVEMENT_DURATION_MS, Math.Min(MAX_MOVEMENT_DURATION_MS, movementDuration));
+            
+            // Create variable speed intervals for more human-like movement
+            var speedIntervals = GenerateVariableSpeedIntervals(movementDuration, movementSteps);
+            
+            // Store the intervals for use in movement timer
+            _speedIntervals = speedIntervals;
+            
+            // Start with first interval
+            movementTimer.Interval = TimeSpan.FromMilliseconds(speedIntervals[0]);
+            
+            MovementSpeedLabel.Content = $"Movement Speed: {movementDuration} ms";
+            movementTimer.Start();
         }
 
         private void PerformMouseClick()
@@ -1073,7 +1398,7 @@ namespace PowerfulWizard
                 int wmMessage = wParam.ToInt32();
                 
                 // Debug: Log all mouse messages to see what's being received
-                Console.WriteLine($"MOUSE HOOK: Message={wmMessage:X4} (0x{wmMessage:X4}), Recording={mouseRecordingService.IsRecording}");
+                // Console.WriteLine($"MOUSE HOOK: Message={wmMessage:X4} (0x{wmMessage:X4}), Recording={mouseRecordingService.IsRecording}");
                 
                 // Get current mouse position for burst effect and recording
                 Point mousePosition = new Point();
@@ -1085,32 +1410,32 @@ namespace PowerfulWizard
                 // Handle mouse button events for recording
                 if (wmMessage == WM_LBUTTONDOWN && mouseRecordingService.IsRecording)
                 {
-                    Console.WriteLine($"MOUSE HOOK: LEFT BUTTON DOWN detected at {mousePosition}");
+                                            // Console.WriteLine($"MOUSE HOOK: LEFT BUTTON DOWN detected at {mousePosition}");
                     mouseRecordingService.RecordButtonDown(RecordedActionType.LeftClick);
                 }
                 else if (wmMessage == WM_RBUTTONDOWN && mouseRecordingService.IsRecording)
                 {
-                    Console.WriteLine($"MOUSE HOOK: RIGHT BUTTON DOWN detected at {mousePosition}");
+                                            // Console.WriteLine($"MOUSE HOOK: RIGHT BUTTON DOWN detected at {mousePosition}");
                     mouseRecordingService.RecordButtonDown(RecordedActionType.RightClick);
                 }
                 else if (wmMessage == WM_MBUTTONDOWN && mouseRecordingService.IsRecording)
                 {
-                    Console.WriteLine($"MOUSE HOOK: MIDDLE BUTTON DOWN detected at {mousePosition}");
+                                            // Console.WriteLine($"MOUSE HOOK: MIDDLE BUTTON DOWN detected at {mousePosition}");
                     mouseRecordingService.RecordButtonDown(RecordedActionType.MiddleClick);
                 }
                 else if (wmMessage == WM_LBUTTONUP && mouseRecordingService.IsRecording)
                 {
-                    Console.WriteLine($"MOUSE HOOK: LEFT BUTTON UP detected at {mousePosition}");
+                                            // Console.WriteLine($"MOUSE HOOK: LEFT BUTTON UP detected at {mousePosition}");
                     mouseRecordingService.RecordButtonUp(RecordedActionType.LeftClick);
                 }
                 else if (wmMessage == WM_RBUTTONUP && mouseRecordingService.IsRecording)
                 {
-                    Console.WriteLine($"MOUSE HOOK: RIGHT BUTTON UP detected at {mousePosition}");
+                                            // Console.WriteLine($"MOUSE HOOK: RIGHT BUTTON UP detected at {mousePosition}");
                     mouseRecordingService.RecordButtonUp(RecordedActionType.RightClick);
                 }
                 else if (wmMessage == WM_MBUTTONUP && mouseRecordingService.IsRecording)
                 {
-                    Console.WriteLine($"MOUSE HOOK: MIDDLE BUTTON UP detected at {mousePosition}");
+                                            // Console.WriteLine($"MOUSE HOOK: MIDDLE BUTTON UP detected at {mousePosition}");
                     mouseRecordingService.RecordButtonUp(RecordedActionType.MiddleClick);
                 }
                 

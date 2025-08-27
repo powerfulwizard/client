@@ -9,6 +9,9 @@ namespace PowerfulWizard
     public partial class GlobalMouseTrailWindow : Window
     {
         private readonly MouseTrailService _mouseTrailService;
+        
+        // Static access to the mouse trail service
+        public static MouseTrailService CurrentMouseTrailService { get; private set; }
         private readonly DispatcherTimer _mouseTracker;
         
         [DllImport("user32.dll")]
@@ -36,6 +39,7 @@ namespace PowerfulWizard
             InitializeComponent();
             
             _mouseTrailService = new MouseTrailService();
+            CurrentMouseTrailService = _mouseTrailService;
             TrailCanvas.Children.Add(_mouseTrailService.TrailCanvas);
             
             // Track mouse position globally

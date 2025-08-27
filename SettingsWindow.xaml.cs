@@ -42,6 +42,9 @@ namespace PowerfulWizard
             // Initialize Mouse Trail settings
             LoadMouseTrailSettings();
             
+            // Initialize Click Validation settings
+            LoadClickValidationSettings();
+            
             // Update the button content to show current color
             var brush = TrailColorButton.Background as SolidColorBrush;
             if (brush != null)
@@ -119,6 +122,9 @@ namespace PowerfulWizard
 
             // Save mouse trail settings
             SaveMouseTrailSettings();
+            
+            // Save click validation settings
+            SaveClickValidationSettings();
 
             // Update main window hotkeys
             _mainWindow.UpdateHotkeys(_startModifiers, _startKey, _stopModifiers, _stopKey);
@@ -242,6 +248,43 @@ namespace PowerfulWizard
                 {
                     TrailColorButton.Content = $"Color: {brush.Color.ToString().Substring(3)}";
                 }
+            }
+        }
+        
+        private void LoadClickValidationSettings()
+        {
+            try
+            {
+                EnableClickValidationCheck.IsChecked = bool.TryParse(ConfigurationManager.AppSettings["EnableClickValidation"], out bool enableValidation) && enableValidation;
+                ValidationAreaSizeInput.Text = ConfigurationManager.AppSettings["ValidationAreaSize"] ?? "50";
+            }
+            catch
+            {
+                // Use defaults if loading fails
+                EnableClickValidationCheck.IsChecked = false;
+                ValidationAreaSizeInput.Text = "50";
+            }
+        }
+
+        private void SaveClickValidationSettings()
+        {
+            try
+            {
+                var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+                
+                // Save click validation settings
+                config.AppSettings.Settings.Remove("EnableClickValidation");
+                config.AppSettings.Settings.Remove("ValidationAreaSize");
+                
+                config.AppSettings.Settings.Add("EnableClickValidation", EnableClickValidationCheck.IsChecked.ToString());
+                config.AppSettings.Settings.Add("ValidationAreaSize", ValidationAreaSizeInput.Text);
+                
+                config.Save(ConfigurationSaveMode.Modified);
+                ConfigurationManager.RefreshSection("appSettings");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to save click validation settings: {ex.Message}", "Error");
             }
         }
     }

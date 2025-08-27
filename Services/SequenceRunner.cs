@@ -234,32 +234,53 @@ namespace PowerfulWizard.Services
         {
             // Determine click position
             Point clickPosition;
-            if (step.UseRandomPosition)
+            
+            if (step.TargetMode == TargetMode.ColorClick)
+            {
+                // Find color in the specified search area
+                var colorPosition = ColorDetectionService.FindMatchingColors(
+                    step.TargetColor, 
+                    step.ColorTolerance, 
+                    step.ColorSearchArea);
+                
+                if (colorPosition.HasValue)
+                {
+                    clickPosition = colorPosition.Value;
+                    System.Diagnostics.Debug.WriteLine($"Color found at: ({clickPosition.X}, {clickPosition.Y})");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("Color not found, using random position in search area");
+                    // Fallback to random position in search area if color not found
+                    int x = _random.Next((int)step.ColorSearchArea.X, (int)(step.ColorSearchArea.X + step.ColorSearchArea.Width));
+                    int y = _random.Next((int)step.ColorSearchArea.Y, (int)(step.ColorSearchArea.Y + step.ColorSearchArea.Height));
+                    clickPosition = new Point(x, y);
+                }
+                
+                // Always use smooth movement for color clicks
+                StartSmoothMovement(clickPosition, step);
+            }
+            else if (step.UseRandomPosition)
             {
                 // Generate random position within the click area
                 int x = _random.Next((int)step.ClickArea.X, (int)(step.ClickArea.X + step.ClickArea.Width));
                 int y = _random.Next((int)step.ClickArea.Y, (int)(step.ClickArea.Y + step.ClickArea.Height));
                 clickPosition = new Point(x, y);
+                
+                // Start smooth movement if using random position
+                StartSmoothMovement(clickPosition, step);
             }
             else
             {
                 // Use current cursor position
                 GetCursorPos(out POINT currentPos);
                 clickPosition = new Point(currentPos.X, currentPos.Y);
-            }
-
-            // Start smooth movement if using random position
-            if (step.UseRandomPosition)
-            {
-                StartSmoothMovement(clickPosition, step);
-            }
-            else
-            {
+                
                 // Perform the click immediately at current position
                 PerformClick(step);
                 
-                // Start delay timer after immediate click
-                StartStepDelayTimer(step);
+                // Validate click result and retry if needed - this will handle retries synchronously
+                HandleClickValidationAndRetry(step);
             }
         }
         
@@ -394,8 +415,8 @@ namespace PowerfulWizard.Services
                     var step = _currentSequence.Steps[_currentStepIndex];
                     PerformClick(step);
                     
-                    // NOW start the delay timer after click is performed
-                    StartStepDelayTimer(step);
+                    // Validate click result and retry if needed - this will handle retries synchronously
+                    HandleClickValidationAndRetry(step);
                 }
                 return;
             }
@@ -513,6 +534,241 @@ namespace PowerfulWizard.Services
             PerformLeftClick();
             Task.Delay(50).Wait(); // 50ms delay between clicks
             PerformLeftClick();
+        }
+
+        private void HandleClickValidationAndRetry(SequenceStep step)
+        {
+            try
+            {
+                // Check if click validation is enabled in settings
+                if (!IsClickValidationEnabled())
+                {
+                    // Skip validation if disabled, just start the delay timer
+                    StartStepDelayTimer(step);
+                    return;
+                }
+                
+                // Wait for the click indicator to appear (frames appear immediately)
+                System.Threading.Thread.Sleep(50); // Reduced wait time
+                
+                // Get current cursor position
+                GetCursorPos(out POINT currentPos);
+                var clickPosition = new Point(currentPos.X, currentPos.Y);
+                
+                // Define a tiny area right at the click point to check for indicators
+                var checkArea = new Rect(
+                    clickPosition.X - 2, 
+                    clickPosition.Y - 2, 
+                    4, // Tiny 4x4 area
+                    4
+                );
+                
+                System.Diagnostics.Debug.WriteLine($"Click validation: Checking 4x4 area around ({clickPosition.X}, {clickPosition.Y}) for crosses");
+                
+                // Simple approach: Use direct pixel sampling instead of OpenCV
+                // Sample a few pixels in the tiny area to check for yellow
+                bool yellowDetected = false;
+                
+                try
+                {
+                    using (var bitmap = new System.Drawing.Bitmap(4, 4))
+                    using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+                    {
+                        graphics.CopyFromScreen((int)checkArea.Left, (int)checkArea.Top, 0, 0, new System.Drawing.Size(4, 4));
+                        
+                        // Check center pixel and a few surrounding pixels
+                        var centerPixel = bitmap.GetPixel(2, 2);
+                        var topPixel = bitmap.GetPixel(2, 1);
+                        var bottomPixel = bitmap.GetPixel(2, 3);
+                        
+                        // Check if any of these pixels are yellow (high R+G, low B)
+                        var pixels = new[] { centerPixel, topPixel, bottomPixel };
+                        foreach (var pixel in pixels)
+                        {
+                            if (pixel.R > 200 && pixel.G > 200 && pixel.B < 100)
+                            {
+                                yellowDetected = true;
+                                System.Diagnostics.Debug.WriteLine($"Yellow pixel detected: R:{pixel.R} G:{pixel.G} B:{pixel.B}");
+                                break;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Pixel sampling error: {ex.Message}");
+                }
+                
+                if (yellowDetected)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Click validation: YELLOW cross detected - retrying click immediately");
+                    
+                    // Wait a bit before retry
+                    System.Threading.Thread.Sleep(100);
+                    
+                    // Retry the click with a new position
+                    RetryClickWithNewPositionSync(step, clickPosition);
+                    
+                    // Wait a bit for the retry click to register
+                    System.Threading.Thread.Sleep(50);
+                    
+                    // After retry, start the delay timer
+                    StartStepDelayTimer(step);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"Click validation: No yellow cross detected - assuming success (red or no indicator)");
+                    // No yellow cross = success, start the normal delay timer
+                    StartStepDelayTimer(step);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Click validation error: {ex.Message}");
+                // If validation fails, just continue with normal flow
+                StartStepDelayTimer(step);
+            }
+        }
+
+        private void RetryClickWithNewPositionSync(SequenceStep step, Point previousPosition)
+        {
+            try
+            {
+                Point newPosition;
+                
+                if (step.TargetMode == TargetMode.ColorClick)
+                {
+                    // For color clicks, find a new color match
+                    var newColorPosition = ColorDetectionService.FindMatchingColors(
+                        step.TargetColor, 
+                        step.ColorTolerance, 
+                        step.ColorSearchArea
+                    );
+                    
+                    if (newColorPosition.HasValue)
+                    {
+                        newPosition = newColorPosition.Value;
+                        System.Diagnostics.Debug.WriteLine($"Retry: Found new color position at ({newPosition.X}, {newPosition.Y})");
+                    }
+                    else
+                    {
+                        // Fallback to random position in search area
+                        int x = _random.Next((int)step.ColorSearchArea.X, (int)(step.ColorSearchArea.X + step.ColorSearchArea.Width));
+                        int y = _random.Next((int)step.ColorSearchArea.Y, (int)(step.ColorSearchArea.Y + step.ColorSearchArea.Height));
+                        newPosition = new Point(x, y);
+                        System.Diagnostics.Debug.WriteLine($"Retry: Using random position at ({newPosition.X}, {newPosition.Y})");
+                    }
+                }
+                else if (step.UseRandomPosition)
+                {
+                    // For random position clicks, generate a new random position
+                    int x = _random.Next((int)step.ClickArea.X, (int)(step.ClickArea.X + step.ClickArea.Width));
+                    int y = _random.Next((int)step.ClickArea.Y, (int)(step.ClickArea.Y + step.ClickArea.Height));
+                    newPosition = new Point(x, y);
+                    System.Diagnostics.Debug.WriteLine($"Retry: Using new random position at ({newPosition.X}, {newPosition.Y})");
+                }
+                else
+                {
+                    // For fixed position, try a small offset
+                    newPosition = new Point(
+                        previousPosition.X + _random.Next(-10, 11),
+                        previousPosition.Y + _random.Next(-10, 11)
+                    );
+                    System.Diagnostics.Debug.WriteLine($"Retry: Using offset position at ({newPosition.X}, {newPosition.Y})");
+                }
+                
+                // Move to new position and click
+                SetCursorPos((int)newPosition.X, (int)newPosition.Y);
+                System.Threading.Thread.Sleep(100); // Small delay for movement
+                
+                // Perform the click
+                PerformClick(step);
+                
+                System.Diagnostics.Debug.WriteLine($"Retry click completed at ({newPosition.X}, {newPosition.Y})");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Retry click error: {ex.Message}");
+            }
+        }
+
+        private bool IsClickValidationEnabled()
+        {
+            try
+            {
+                var config = System.Configuration.ConfigurationManager.AppSettings;
+                return bool.TryParse(config["EnableClickValidation"], out bool enabled) && enabled;
+            }
+            catch
+            {
+                return false; // Default to disabled if there's an error
+            }
+        }
+
+        private int GetValidationAreaSize()
+        {
+            try
+            {
+                var config = System.Configuration.ConfigurationManager.AppSettings;
+                return int.TryParse(config["ValidationAreaSize"], out int size) ? size : 50;
+            }
+            catch
+            {
+                return 50; // Default to 50 pixels if there's an error
+            }
+        }
+        
+        /// <summary>
+        /// Debug method to analyze what colors are actually in the validation area
+        /// </summary>
+        private void DebugColorsInArea(System.Windows.Rect area)
+        {
+            try
+            {
+                // Capture the area and analyze dominant colors
+                using (var bitmap = new System.Drawing.Bitmap((int)area.Width, (int)area.Height))
+                using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+                {
+                    graphics.CopyFromScreen((int)area.Left, (int)area.Top, 0, 0, new System.Drawing.Size((int)area.Width, (int)area.Height));
+                    
+                    // Sample pixels in a grid pattern to detect cross patterns
+                    var samplePoints = new[] { 
+                        new System.Drawing.Point(5, 5),   // Top-left
+                        new System.Drawing.Point(10, 10), // Center
+                        new System.Drawing.Point(15, 15), // Bottom-right
+                        new System.Drawing.Point(5, 15),  // Bottom-left
+                        new System.Drawing.Point(15, 5)   // Top-right
+                    };
+                    
+                    System.Diagnostics.Debug.WriteLine($"Debug: Analyzing 20x20 area at ({area.Left}, {area.Top})");
+                    
+                    foreach (var point in samplePoints)
+                    {
+                        if (point.X < bitmap.Width && point.Y < bitmap.Height)
+                        {
+                            var pixel = bitmap.GetPixel(point.X, point.Y);
+                            var brightness = (pixel.R + pixel.G + pixel.B) / 3;
+                            var isBright = brightness > 100;
+                            
+                            System.Diagnostics.Debug.WriteLine($"Debug: Pixel at ({point.X}, {point.Y}) = R:{pixel.R} G:{pixel.G} B:{pixel.B} (Bright: {isBright})");
+                            
+                            // Check for potential cross indicators
+                            if (pixel.R > 200 && pixel.G < 100 && pixel.B < 100)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"  -> Potential RED cross indicator detected!");
+                            }
+                            else if (pixel.R > 200 && pixel.G > 200 && pixel.B < 100)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"  -> Potential YELLOW cross indicator detected!");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Debug color analysis error: {ex.Message}");
+            }
         }
 
         private void OnSequenceTimerTick(object? sender, EventArgs e)

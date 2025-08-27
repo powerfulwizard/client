@@ -5,6 +5,7 @@ using System.Windows;
 using System.Collections.Generic;
 using System.Xml.Serialization;
 using System.IO;
+using System.Windows.Media;
 
 namespace PowerfulWizard.Models
 {
@@ -14,6 +15,12 @@ namespace PowerfulWizard.Models
         RightClick,
         MiddleClick,
         DoubleClick
+    }
+
+    public enum TargetMode
+    {
+        ClickArea,
+        ColorClick
     }
 
     public enum LoopMode
@@ -41,6 +48,10 @@ namespace PowerfulWizard.Models
         private bool _useRandomPosition;
         private Rect _clickArea;
         private string _description = string.Empty;
+        private TargetMode _targetMode;
+        private Color _targetColor;
+        private int _colorTolerance;
+        private Rect _colorSearchArea;
 
         public ClickType ClickType
         {
@@ -90,6 +101,30 @@ namespace PowerfulWizard.Models
             set => SetProperty(ref _description, value);
         }
 
+        public TargetMode TargetMode
+        {
+            get => _targetMode;
+            set => SetProperty(ref _targetMode, value);
+        }
+
+        public Color TargetColor
+        {
+            get => _targetColor;
+            set => SetProperty(ref _targetColor, value);
+        }
+
+        public int ColorTolerance
+        {
+            get => _colorTolerance;
+            set => SetProperty(ref _colorTolerance, value);
+        }
+
+        public Rect ColorSearchArea
+        {
+            get => _colorSearchArea;
+            set => SetProperty(ref _colorSearchArea, value);
+        }
+
         public SequenceStep()
         {
             ClickType = ClickType.LeftClick;
@@ -100,6 +135,10 @@ namespace PowerfulWizard.Models
             UseRandomPosition = false;
             ClickArea = new Rect(0, 0, 100, 100);
             Description = "New Step";
+            TargetMode = TargetMode.ClickArea;
+            TargetColor = Colors.Red;
+            ColorTolerance = 30;
+            ColorSearchArea = new Rect(0, 0, 100, 100);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
