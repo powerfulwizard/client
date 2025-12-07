@@ -5,6 +5,9 @@ A powerful and feature-rich auto clicker with advanced sequence support, visual 
 ## 🌐 Website
 Visit [powerfulwizard.org](https://powerfulwizard.org) for more information and updates.
 
+## 💬 Community
+Join our Discord server for support, updates, and community discussion: [Join Discord](https://discord.gg/29jXDr7GHM)
+
 ## Screenshots
 
 ### Main Interface
