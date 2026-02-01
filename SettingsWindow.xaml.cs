@@ -17,6 +17,26 @@ namespace PowerfulWizard
         private const int MOD_CONTROL = 0x0002;
         private const int MOD_SHIFT = 0x0004;
         private const int MOD_ALT = 0x0001;
+        private const uint VK_XBUTTON1 = 0x05;
+        private const uint VK_XBUTTON2 = 0x06;
+
+        private static string FormatHotkey(uint modifiers, uint key)
+        {
+            if (key == VK_XBUTTON1) return AppendModifiers(modifiers, "Mouse4");
+            if (key == VK_XBUTTON2) return AppendModifiers(modifiers, "Mouse5");
+            var keyName = KeyInterop.KeyFromVirtualKey((int)key).ToString();
+            return AppendModifiers(modifiers, keyName);
+        }
+
+        private static string AppendModifiers(uint modifiers, string keyPart)
+        {
+            var sb = new System.Text.StringBuilder();
+            if ((modifiers & MOD_CONTROL) != 0) sb.Append("Ctrl+");
+            if ((modifiers & MOD_SHIFT) != 0) sb.Append("Shift+");
+            if ((modifiers & MOD_ALT) != 0) sb.Append("Alt+");
+            sb.Append(keyPart);
+            return sb.ToString();
+        }
 
         public SettingsWindow(MainWindow mainWindow, uint startModifiers, uint startKey, uint stopModifiers, uint stopKey)
         {
@@ -27,17 +47,8 @@ namespace PowerfulWizard
             _stopModifiers = stopModifiers;
             _stopKey = stopKey;
 
-            // Initialize Start hotkey
-            StartHotkeyInput.Text = KeyInterop.KeyFromVirtualKey((int)_startKey).ToString();
-            StartCtrlCheck.IsChecked = (_startModifiers & MOD_CONTROL) != 0;
-            StartShiftCheck.IsChecked = (_startModifiers & MOD_SHIFT) != 0;
-            StartAltCheck.IsChecked = (_startModifiers & MOD_ALT) != 0;
-
-            // Initialize Stop hotkey
-            StopHotkeyInput.Text = KeyInterop.KeyFromVirtualKey((int)_stopKey).ToString();
-            StopCtrlCheck.IsChecked = (_stopModifiers & MOD_CONTROL) != 0;
-            StopShiftCheck.IsChecked = (_stopModifiers & MOD_SHIFT) != 0;
-            StopAltCheck.IsChecked = (_stopModifiers & MOD_ALT) != 0;
+            StartHotkeyInput.Text = FormatHotkey(_startModifiers, _startKey);
+            StopHotkeyInput.Text = FormatHotkey(_stopModifiers, _stopKey);
 
             // Initialize Mouse Trail settings
             LoadMouseTrailSettings();
@@ -53,45 +64,86 @@ namespace PowerfulWizard
             }
         }
 
+        private void OnHotkeyInputGotFocus(object sender, RoutedEventArgs e)
+        {
+            HotkeyWaitingText.Visibility = Visibility.Visible;
+        }
+
+        private void OnHotkeyInputLostFocus(object sender, RoutedEventArgs e)
+        {
+            HotkeyWaitingText.Visibility = Visibility.Collapsed;
+        }
+
         private void OnHotkeyInputKeyDown(object sender, KeyEventArgs e)
         {
-            if (sender is TextBox textBox)
+            if (sender is not TextBox textBox) return;
+
+            uint mods = 0;
+            if ((Keyboard.Modifiers & ModifierKeys.Control) != 0) mods |= MOD_CONTROL;
+            if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) mods |= MOD_SHIFT;
+            if ((Keyboard.Modifiers & ModifierKeys.Alt) != 0) mods |= MOD_ALT;
+
+            Key key = e.Key == Key.System ? e.SystemKey : e.Key;
+            if (key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftShift || key == Key.RightShift ||
+                key == Key.LeftAlt || key == Key.RightAlt || key == Key.LWin || key == Key.RWin)
             {
-                // Capture the pressed key and update the textbox
-                Key key = e.Key == Key.System ? e.SystemKey : e.Key;
-                if (key != Key.LeftCtrl && key != Key.RightCtrl &&
-                    key != Key.LeftShift && key != Key.RightShift &&
-                    key != Key.LeftAlt && key != Key.RightAlt)
-                {
-                    textBox.Text = key.ToString();
-                    uint virtualKey = (uint)KeyInterop.VirtualKeyFromKey(key);
-                    if (textBox.Name == "StartHotkeyInput")
-                    {
-                        _startKey = virtualKey;
-                    }
-                    else if (textBox.Name == "StopHotkeyInput")
-                    {
-                        _stopKey = virtualKey;
-                    }
-                    e.Handled = true;
-                }
+                e.Handled = true;
+                return;
             }
+
+            uint virtualKey = (uint)KeyInterop.VirtualKeyFromKey(key);
+            if (textBox.Name == "StartHotkeyInput")
+            {
+                _startModifiers = mods;
+                _startKey = virtualKey;
+                textBox.Text = FormatHotkey(_startModifiers, _startKey);
+            }
+            else if (textBox.Name == "StopHotkeyInput")
+            {
+                _stopModifiers = mods;
+                _stopKey = virtualKey;
+                textBox.Text = FormatHotkey(_stopModifiers, _stopKey);
+            }
+            HotkeyWaitingText.Visibility = Visibility.Collapsed;
+            e.Handled = true;
+        }
+
+        private void OnWindowPreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            var focused = FocusManager.GetFocusedElement(this);
+            if (focused != StartHotkeyInput && focused != StopHotkeyInput) return;
+
+            uint mods = 0;
+            if ((Keyboard.Modifiers & ModifierKeys.Control) != 0) mods |= MOD_CONTROL;
+            if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) mods |= MOD_SHIFT;
+            if ((Keyboard.Modifiers & ModifierKeys.Alt) != 0) mods |= MOD_ALT;
+
+            uint vk = e.ChangedButton switch
+            {
+                MouseButton.XButton1 => VK_XBUTTON1,
+                MouseButton.XButton2 => VK_XBUTTON2,
+                _ => 0
+            };
+            if (vk == 0) return;
+
+            if (focused == StartHotkeyInput)
+            {
+                _startModifiers = mods;
+                _startKey = vk;
+                StartHotkeyInput.Text = FormatHotkey(_startModifiers, _startKey);
+            }
+            else
+            {
+                _stopModifiers = mods;
+                _stopKey = vk;
+                StopHotkeyInput.Text = FormatHotkey(_stopModifiers, _stopKey);
+            }
+            HotkeyWaitingText.Visibility = Visibility.Collapsed;
+            e.Handled = true;
         }
 
         private void OnSaveButtonClick(object? sender, RoutedEventArgs e)
         {
-            // Update Start modifiers
-            _startModifiers = 0;
-            if (StartCtrlCheck.IsChecked == true) _startModifiers |= MOD_CONTROL;
-            if (StartShiftCheck.IsChecked == true) _startModifiers |= MOD_SHIFT;
-            if (StartAltCheck.IsChecked == true) _startModifiers |= MOD_ALT;
-
-            // Update Stop modifiers
-            _stopModifiers = 0;
-            if (StopCtrlCheck.IsChecked == true) _stopModifiers |= MOD_CONTROL;
-            if (StopShiftCheck.IsChecked == true) _stopModifiers |= MOD_SHIFT;
-            if (StopAltCheck.IsChecked == true) _stopModifiers |= MOD_ALT;
-
             // Validate hotkeys
             if (_startKey == 0 || _stopKey == 0)
             {

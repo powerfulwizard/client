@@ -77,7 +77,10 @@ namespace PowerfulWizard
         private MouseRecordingService mouseRecordingService;
         private MouseRecording? currentRecording;
         private double currentPlaybackSpeed = 1.0;
-        
+
+        /// <summary>Debounce same start/stop hotkey so key/mouse repeat doesn't stop-then-start.</summary>
+        private DateTime _lastSameHotkeyToggleUtc = DateTime.MinValue;
+        private const int SAME_HOTKEY_DEBOUNCE_MS = 400;
 
         
         public enum ClickType
@@ -131,7 +134,32 @@ namespace PowerfulWizard
         private const int WM_MBUTTONDOWN = 0x0207;
         private const int WM_MBUTTONUP = 0x0208;
         private const int WM_MOUSEMOVE = 0x0200;
-        
+        private const int WM_XBUTTONDOWN = 0x020B;
+        private const int LLMHF_INJECTED = 0x0001;
+        private const uint VK_XBUTTON1 = 0x05;
+        private const uint VK_XBUTTON2 = 0x06;
+        private const int VK_CONTROL = 0x11;
+        private const int VK_SHIFT = 0x10;
+        private const int VK_ALT = 0x12;
+
+        [DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int vKey);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MSLLHOOKSTRUCT
+        {
+            public POINT pt;
+            public uint mouseData;
+            public uint dwFlags;
+            public uint time;
+            public UIntPtr dwExtraInfo;
+        }
+
+        private static bool IsMouseButtonKey(uint vk)
+        {
+            return vk == 0x01 || vk == 0x02 || vk == 0x04 || vk == VK_XBUTTON1 || vk == VK_XBUTTON2;
+        }
+
         private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
         private LowLevelMouseProc? _mouseProc;
         private IntPtr _mouseHookId = IntPtr.Zero;
@@ -305,8 +333,12 @@ namespace PowerfulWizard
             
             // Register hotkeys and setup hooks
             IntPtr hWnd = new WindowInteropHelper(this).Handle;
-            RegisterHotKey(hWnd, HOTKEY_ID_START, startHotkeyModifiers, startHotkeyKey);
-            RegisterHotKey(hWnd, HOTKEY_ID_STOP, stopHotkeyModifiers, stopHotkeyKey);
+            bool sameKbHotkey = !IsMouseButtonKey(startHotkeyKey) && !IsMouseButtonKey(stopHotkeyKey) &&
+                IsSameHotkey(startHotkeyModifiers, startHotkeyKey, stopHotkeyModifiers, stopHotkeyKey);
+            if (!IsMouseButtonKey(startHotkeyKey))
+                RegisterHotKey(hWnd, HOTKEY_ID_START, startHotkeyModifiers, startHotkeyKey);
+            if (!IsMouseButtonKey(stopHotkeyKey) && !sameKbHotkey)
+                RegisterHotKey(hWnd, HOTKEY_ID_STOP, stopHotkeyModifiers, stopHotkeyKey);
             RegisterHotKey(hWnd, HOTKEY_ID_RECORD, recordHotkeyModifiers, recordHotkeyKey);
             RegisterHotKey(hWnd, HOTKEY_ID_PLAY, playHotkeyModifiers, playHotkeyKey);
             HwndSource source = HwndSource.FromHwnd(hWnd);
@@ -323,8 +355,10 @@ namespace PowerfulWizard
         private void OnWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
             IntPtr hWnd = new WindowInteropHelper(this).Handle;
-            UnregisterHotKey(hWnd, HOTKEY_ID_START);
-            UnregisterHotKey(hWnd, HOTKEY_ID_STOP);
+            if (!IsMouseButtonKey(startHotkeyKey))
+                UnregisterHotKey(hWnd, HOTKEY_ID_START);
+            if (!IsMouseButtonKey(stopHotkeyKey))
+                UnregisterHotKey(hWnd, HOTKEY_ID_STOP);
             UnregisterHotKey(hWnd, HOTKEY_ID_RECORD);
             UnregisterHotKey(hWnd, HOTKEY_ID_PLAY);
             overlayWindow?.Close();
@@ -338,18 +372,57 @@ namespace PowerfulWizard
             }
         }
 
+        private bool IsSameHotkey(uint mod1, uint key1, uint mod2, uint key2)
+        {
+            return mod1 == mod2 && key1 == key2;
+        }
+
+        /// <summary>True when either sequence mode or simple timer mode is actively running.</summary>
+        private bool IsClickingOrSequenceRunning()
+        {
+            return sequenceRunner.IsRunning || timer.IsEnabled;
+        }
+
+        /// <summary>True if we should ignore this same-hotkey press (within debounce to avoid repeat = restart).</summary>
+        private bool ShouldDebounceSameHotkey()
+        {
+            return (DateTime.UtcNow - _lastSameHotkeyToggleUtc).TotalMilliseconds < SAME_HOTKEY_DEBOUNCE_MS;
+        }
+
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
             if (msg == WM_HOTKEY)
             {
                 int id = wParam.ToInt32();
+                bool sameHotkey = IsSameHotkey(startHotkeyModifiers, startHotkeyKey, stopHotkeyModifiers, stopHotkeyKey);
+
                 if (id == HOTKEY_ID_START)
                 {
-                    OnStartButtonClick(this, new RoutedEventArgs());
+                    if (sameHotkey)
+                    {
+                        if (ShouldDebounceSameHotkey())
+                            return IntPtr.Zero;
+                        _lastSameHotkeyToggleUtc = DateTime.UtcNow;
+                        if (IsClickingOrSequenceRunning())
+                            OnStopButtonClick(this, new RoutedEventArgs());
+                        else
+                            OnStartButtonClick(this, new RoutedEventArgs());
+                    }
+                    else
+                        OnStartButtonClick(this, new RoutedEventArgs());
                 }
                 else if (id == HOTKEY_ID_STOP)
                 {
-                    OnStopButtonClick(this, new RoutedEventArgs());
+                    if (sameHotkey)
+                    {
+                        if (ShouldDebounceSameHotkey())
+                            return IntPtr.Zero;
+                        _lastSameHotkeyToggleUtc = DateTime.UtcNow;
+                        if (IsClickingOrSequenceRunning())
+                            OnStopButtonClick(this, new RoutedEventArgs());
+                    }
+                    else if (!sameHotkey)
+                        OnStopButtonClick(this, new RoutedEventArgs());
                 }
                 else if (id == HOTKEY_ID_RECORD)
                 {
@@ -377,26 +450,39 @@ namespace PowerfulWizard
         public void UpdateHotkeys(uint startModifiers, uint startKey, uint stopModifiers, uint stopKey)
         {
             IntPtr hWnd = new WindowInteropHelper(this).Handle;
-            UnregisterHotKey(hWnd, HOTKEY_ID_START);
-            UnregisterHotKey(hWnd, HOTKEY_ID_STOP);
+            bool sameKbHotkey = !IsMouseButtonKey(startHotkeyKey) && !IsMouseButtonKey(stopHotkeyKey) &&
+                IsSameHotkey(startHotkeyModifiers, startHotkeyKey, stopHotkeyModifiers, stopHotkeyKey);
+            if (!IsMouseButtonKey(startHotkeyKey))
+                UnregisterHotKey(hWnd, HOTKEY_ID_START);
+            if (!IsMouseButtonKey(stopHotkeyKey) && !sameKbHotkey)
+                UnregisterHotKey(hWnd, HOTKEY_ID_STOP);
             startHotkeyModifiers = startModifiers;
             startHotkeyKey = startKey;
             stopHotkeyModifiers = stopModifiers;
             stopHotkeyKey = stopKey;
-            RegisterHotKey(hWnd, HOTKEY_ID_START, startModifiers, startKey);
-            RegisterHotKey(hWnd, HOTKEY_ID_STOP, stopModifiers, stopKey);
+            sameKbHotkey = !IsMouseButtonKey(startKey) && !IsMouseButtonKey(stopKey) &&
+                IsSameHotkey(startModifiers, startKey, stopModifiers, stopKey);
+            if (!IsMouseButtonKey(startKey))
+                RegisterHotKey(hWnd, HOTKEY_ID_START, startModifiers, startKey);
+            if (!IsMouseButtonKey(stopKey) && !sameKbHotkey)
+                RegisterHotKey(hWnd, HOTKEY_ID_STOP, stopModifiers, stopKey);
             StartHotkeyLabel.Content = $"Hotkey: {GetHotkeyText(startModifiers, startKey)}";
             StopHotkeyLabel.Content = $"Hotkey: {GetHotkeyText(stopModifiers, stopKey)}";
         }
 
         private string GetHotkeyText(uint modifiers, uint key)
         {
+            string keyPart = key switch
+            {
+                VK_XBUTTON1 => "Mouse4",
+                VK_XBUTTON2 => "Mouse5",
+                _ => KeyInterop.KeyFromVirtualKey((int)key).ToString()
+            };
             StringBuilder text = new StringBuilder();
             if ((modifiers & MOD_CONTROL) != 0) text.Append("Ctrl+");
             if ((modifiers & MOD_SHIFT) != 0) text.Append("Shift+");
             if ((modifiers & MOD_ALT) != 0) text.Append("Alt+");
-            if (text.Length == 0) text.Append("None+");
-            text.Append(KeyInterop.KeyFromVirtualKey((int)key));
+            text.Append(keyPart);
             return text.ToString();
         }
 
@@ -1435,6 +1521,49 @@ namespace PowerfulWizard
                 {
                     // The MouseRecordingService will handle drag detection in its timer
                     // This ensures we capture all mouse movement during recording
+                }
+
+                // Mouse hotkey: Start/Stop via XButton or other mouse buttons (ignore injected playback)
+                if (wmMessage == WM_XBUTTONDOWN)
+                {
+                    var msll = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+                    if ((msll.dwFlags & LLMHF_INJECTED) == 0 && !mouseRecordingService.IsRecording)
+                    {
+                        uint buttonId = (msll.mouseData >> 16) & 0xFFFF; // HIWORD
+                        uint buttonVk = buttonId == 1 ? VK_XBUTTON1 : (buttonId == 2 ? VK_XBUTTON2 : 0);
+                        if (buttonVk != 0)
+                        {
+                            uint mods = 0;
+                            if ((GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0) mods |= MOD_CONTROL;
+                            if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0) mods |= MOD_SHIFT;
+                            if ((GetAsyncKeyState(VK_ALT) & 0x8000) != 0) mods |= MOD_ALT;
+
+                            bool matchStart = IsMouseButtonKey(startHotkeyKey) && startHotkeyKey == buttonVk && startHotkeyModifiers == mods;
+                            bool matchStop = IsMouseButtonKey(stopHotkeyKey) && stopHotkeyKey == buttonVk && stopHotkeyModifiers == mods;
+                            if (matchStart && matchStop)
+                            {
+                                // Same hotkey: toggle (debounce so repeat doesn't stop-then-start)
+                                Dispatcher.Invoke(() =>
+                                {
+                                    if (ShouldDebounceSameHotkey())
+                                        return;
+                                    _lastSameHotkeyToggleUtc = DateTime.UtcNow;
+                                    if (IsClickingOrSequenceRunning())
+                                        OnStopButtonClick(this, new RoutedEventArgs());
+                                    else
+                                        OnStartButtonClick(this, new RoutedEventArgs());
+                                });
+                            }
+                            else if (matchStart)
+                            {
+                                Dispatcher.Invoke(() => OnStartButtonClick(this, new RoutedEventArgs()));
+                            }
+                            else if (matchStop)
+                            {
+                                Dispatcher.Invoke(() => OnStopButtonClick(this, new RoutedEventArgs()));
+                            }
+                        }
+                    }
                 }
                 
                 // Create burst effect for all mouse clicks (not just during recording)

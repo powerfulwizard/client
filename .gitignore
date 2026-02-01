@@ -2,13 +2,14 @@
 bin/
 obj/
 
-# Visual Studio / Rider IDE Files
+# Visual Studio / Rider / Cursor IDE Files
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
 .vs/
 .idea/
+.cursor/
 
 # NuGet Packages
 *.nupkg

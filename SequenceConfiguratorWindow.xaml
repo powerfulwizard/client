@@ -272,37 +272,32 @@
                                             </StackPanel>
                                         </Grid>
                                         
-                                        <!-- Target Mode -->
+                                        <!-- Target Mode (just the dropdown; Click Area vs Color Click controls show below) -->
                                         <Grid Margin="0,0,0,10">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
-                                            
                                             <Label Grid.Column="0" Content="Target Mode:" Foreground="White"/>
-                                            <ComboBox Grid.Column="1" Width="120" Margin="5,0,15,0" 
+                                            <ComboBox Grid.Column="1" Width="120" Margin="5,0,0,0" 
                                                       SelectedIndex="{Binding TargetMode, Converter={StaticResource TargetModeToIndexConverter}}">
                                                 <ComboBoxItem Content="Click Area"/>
                                                 <ComboBoxItem Content="Color Click"/>
                                             </ComboBox>
-                                            
-                                            <Label Grid.Column="2" Content="Color Settings:" Foreground="White"/>
-                                            <StackPanel Grid.Column="3" Orientation="Horizontal">
-                                                <Button Content="Set Color" Width="80" Height="25"
-                                                        Click="OnSetColorClick" Tag="{Binding}"
-                                                        IsEnabled="{Binding TargetMode, Converter={StaticResource IsColorClickModeConverter}}"
-                                                        Style="{StaticResource SetAreaButtonStyle}" Margin="0,0,5,0"/>
-                                                <Button Content="Set Area" Width="80" Height="25"
-                                                        Click="OnSetColorAreaClick" Tag="{Binding}"
-                                                        IsEnabled="{Binding TargetMode, Converter={StaticResource IsColorClickModeConverter}}"
-                                                        Style="{StaticResource SetAreaButtonStyle}"/>
-                                            </StackPanel>
                                         </Grid>
                                         
-                                        <!-- Color Area Display -->
-                                        <Grid Margin="0,10,0,0" Visibility="{Binding TargetMode, Converter={StaticResource IsColorClickModeConverter}}">
+                                        <!-- Color Click only: Set Color + Set Area -->
+                                        <StackPanel Margin="0,0,0,10" Visibility="{Binding TargetMode, Converter={StaticResource IsColorClickModeConverter}}" Orientation="Horizontal">
+                                            <Button Content="Set Color" Width="80" Height="25"
+                                                    Click="OnSetColorClick" Tag="{Binding}"
+                                                    Style="{StaticResource SetAreaButtonStyle}" Margin="0,0,5,0"/>
+                                            <Button Content="Set Search Area" Width="100" Height="25"
+                                                    Click="OnSetColorAreaClick" Tag="{Binding}"
+                                                    Style="{StaticResource SetAreaButtonStyle}"/>
+                                        </StackPanel>
+                                        
+                                        <!-- Color Click only: Color Area Display -->
+                                        <Grid Margin="0,0,0,10" Visibility="{Binding TargetMode, Converter={StaticResource IsColorClickModeConverter}}">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
@@ -352,16 +347,16 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 
-                                                <Label Grid.Column="0" Content="Custom Position:" Foreground="White"/>
-                                                <CheckBox Grid.Column="1" Content="Enable" Margin="5,0,5,0"
-                                                          IsChecked="{Binding UseRandomPosition, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
-                                                <Button Grid.Column="2" Content="Set Area" Width="70" Height="25"
+                                                <Label Grid.Column="0" Content="Click Area:" Foreground="White"/>
+                                                <Button Grid.Column="1" Content="Set Area" Width="80" Height="25"
                                                         Click="OnSetClickAreaClick" Tag="{Binding}"
-                                                        IsEnabled="{Binding UseRandomPosition}" Style="{StaticResource SetAreaButtonStyle}"/>
+                                                        Style="{StaticResource SetAreaButtonStyle}" Margin="0,0,10,0"/>
+                                                <CheckBox Grid.Column="2" Content="Use random position within area" Margin="0,0,0,0"
+                                                          IsChecked="{Binding UseRandomPosition, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
                                             </Grid>
                                             
                                             <!-- Area Display -->
-                                            <Grid Margin="0,10,0,0" Visibility="{Binding UseRandomPosition, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <Grid Margin="0,10,0,0">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="*"/>

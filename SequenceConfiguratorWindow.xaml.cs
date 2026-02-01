@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
 using System.Collections.ObjectModel;
@@ -7,20 +9,20 @@ using Microsoft.Win32;
 using PowerfulWizard.Models;
 using System.Windows.Threading;
 using System.Windows.Media;
-using System;
 
 namespace PowerfulWizard
 {
     public partial class SequenceConfiguratorWindow : Window
     {
         private Sequence _currentSequence;
-        
+        private ConfiguratorAreaOverlayWindow? _areaOverlay;
+
         public Sequence CurrentSequence => _currentSequence;
-        
+
         public SequenceConfiguratorWindow(Sequence? existingSequence = null)
         {
             InitializeComponent();
-            
+
             if (existingSequence != null)
             {
                 _currentSequence = existingSequence;
@@ -28,7 +30,6 @@ namespace PowerfulWizard
             else
             {
                 _currentSequence = new Sequence();
-                // Add a default step
                 _currentSequence.Steps.Add(new SequenceStep
                 {
                     Description = "Step 1",
@@ -39,13 +40,37 @@ namespace PowerfulWizard
                     CustomMovementDurationMs = 150
                 });
             }
-            
+
             DataContext = _currentSequence;
-            
-            // Prevent any automatic scrolling behavior
             StepsItemsControl.Focusable = false;
-            
-            System.Diagnostics.Debug.WriteLine("SequenceConfiguratorWindow opened successfully");
+
+            _currentSequence.Steps.CollectionChanged += OnStepsCollectionChanged;
+            Loaded += OnConfiguratorLoaded;
+            Closing += OnConfiguratorClosing;
+        }
+
+        private void OnConfiguratorLoaded(object sender, RoutedEventArgs e)
+        {
+            _areaOverlay = new ConfiguratorAreaOverlayWindow { Owner = this };
+            _areaOverlay.Show();
+            _areaOverlay.RefreshFromSequence(_currentSequence);
+        }
+
+        private void OnConfiguratorClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            _currentSequence.Steps.CollectionChanged -= OnStepsCollectionChanged;
+            _areaOverlay?.Close();
+            _areaOverlay = null;
+        }
+
+        private void OnStepsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            _areaOverlay?.RefreshFromSequence(_currentSequence);
+        }
+
+        private void RefreshAreaOverlay()
+        {
+            _areaOverlay?.RefreshFromSequence(_currentSequence);
         }
         
         private void OnAddStepClick(object sender, RoutedEventArgs e)
@@ -121,6 +146,7 @@ namespace PowerfulWizard
                 {
                     step.ClickArea = clickAreaWindow.SelectedArea;
                     step.UseRandomPosition = true;
+                    RefreshAreaOverlay();
                 }
             }
         }
@@ -154,6 +180,7 @@ namespace PowerfulWizard
                 if (clickAreaWindow.ShowDialog() == true)
                 {
                     step.ColorSearchArea = clickAreaWindow.SelectedArea;
+                    RefreshAreaOverlay();
                 }
             }
         }
