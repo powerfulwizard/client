@@ -28,6 +28,10 @@ PowerfulWizardAutoClicker.exe.config
 *.bak
 *.swp
 
+# Python Virtual Environment
+.venv/
+venv/
+
 # OS-Specific Files
 .DS_Store
 Thumbs.db

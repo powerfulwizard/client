@@ -14,14 +14,21 @@ namespace PowerfulWizard
         private uint _startKey;
         private uint _stopModifiers;
         private uint _stopKey;
+        private bool _isListeningForHotkey;
         private const int MOD_CONTROL = 0x0002;
         private const int MOD_SHIFT = 0x0004;
         private const int MOD_ALT = 0x0001;
+        private const uint VK_LBUTTON = 0x01;
+        private const uint VK_RBUTTON = 0x02;
+        private const uint VK_MBUTTON = 0x04;
         private const uint VK_XBUTTON1 = 0x05;
         private const uint VK_XBUTTON2 = 0x06;
 
         private static string FormatHotkey(uint modifiers, uint key)
         {
+            if (key == VK_LBUTTON) return AppendModifiers(modifiers, "Mouse1");
+            if (key == VK_RBUTTON) return AppendModifiers(modifiers, "Mouse2");
+            if (key == VK_MBUTTON) return AppendModifiers(modifiers, "Mouse3");
             if (key == VK_XBUTTON1) return AppendModifiers(modifiers, "Mouse4");
             if (key == VK_XBUTTON2) return AppendModifiers(modifiers, "Mouse5");
             var keyName = KeyInterop.KeyFromVirtualKey((int)key).ToString();
@@ -66,17 +73,19 @@ namespace PowerfulWizard
 
         private void OnHotkeyInputGotFocus(object sender, RoutedEventArgs e)
         {
+            _isListeningForHotkey = true;
             HotkeyWaitingText.Visibility = Visibility.Visible;
         }
 
         private void OnHotkeyInputLostFocus(object sender, RoutedEventArgs e)
         {
+            _isListeningForHotkey = false;
             HotkeyWaitingText.Visibility = Visibility.Collapsed;
         }
 
         private void OnHotkeyInputKeyDown(object sender, KeyEventArgs e)
         {
-            if (sender is not TextBox textBox) return;
+            if (sender is not TextBox textBox || !_isListeningForHotkey) return;
 
             uint mods = 0;
             if ((Keyboard.Modifiers & ModifierKeys.Control) != 0) mods |= MOD_CONTROL;
@@ -104,12 +113,15 @@ namespace PowerfulWizard
                 _stopKey = virtualKey;
                 textBox.Text = FormatHotkey(_stopModifiers, _stopKey);
             }
+            _isListeningForHotkey = false;
             HotkeyWaitingText.Visibility = Visibility.Collapsed;
+            Keyboard.ClearFocus();
             e.Handled = true;
         }
 
         private void OnWindowPreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
+            if (!_isListeningForHotkey) return;
             var focused = FocusManager.GetFocusedElement(this);
             if (focused != StartHotkeyInput && focused != StopHotkeyInput) return;
 
@@ -120,6 +132,9 @@ namespace PowerfulWizard
 
             uint vk = e.ChangedButton switch
             {
+                MouseButton.Left => VK_LBUTTON,
+                MouseButton.Right => VK_RBUTTON,
+                MouseButton.Middle => VK_MBUTTON,
                 MouseButton.XButton1 => VK_XBUTTON1,
                 MouseButton.XButton2 => VK_XBUTTON2,
                 _ => 0
@@ -138,7 +153,9 @@ namespace PowerfulWizard
                 _stopKey = vk;
                 StopHotkeyInput.Text = FormatHotkey(_stopModifiers, _stopKey);
             }
+            _isListeningForHotkey = false;
             HotkeyWaitingText.Visibility = Visibility.Collapsed;
+            Keyboard.ClearFocus();
             e.Handled = true;
         }
 

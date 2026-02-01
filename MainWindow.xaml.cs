@@ -474,6 +474,9 @@ namespace PowerfulWizard
         {
             string keyPart = key switch
             {
+                0x01 => "Mouse1",
+                0x02 => "Mouse2",
+                0x04 => "Mouse3",
                 VK_XBUTTON1 => "Mouse4",
                 VK_XBUTTON2 => "Mouse5",
                 _ => KeyInterop.KeyFromVirtualKey((int)key).ToString()
@@ -1523,15 +1526,19 @@ namespace PowerfulWizard
                     // This ensures we capture all mouse movement during recording
                 }
 
-                // Mouse hotkey: Start/Stop via XButton or other mouse buttons (ignore injected playback)
-                if (wmMessage == WM_XBUTTONDOWN)
+                // Mouse hotkey: Start/Stop via any mouse button (ignore injected playback)
+                if (wmMessage == WM_LBUTTONDOWN || wmMessage == WM_RBUTTONDOWN || wmMessage == WM_MBUTTONDOWN || wmMessage == WM_XBUTTONDOWN)
                 {
                     var msll = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
-                    if ((msll.dwFlags & LLMHF_INJECTED) == 0 && !mouseRecordingService.IsRecording)
+                    uint buttonVk = wmMessage switch
                     {
-                        uint buttonId = (msll.mouseData >> 16) & 0xFFFF; // HIWORD
-                        uint buttonVk = buttonId == 1 ? VK_XBUTTON1 : (buttonId == 2 ? VK_XBUTTON2 : 0);
-                        if (buttonVk != 0)
+                        WM_LBUTTONDOWN => 0x01u,
+                        WM_RBUTTONDOWN => 0x02u,
+                        WM_MBUTTONDOWN => 0x04u,
+                        WM_XBUTTONDOWN => ((msll.mouseData >> 16) & 0xFFFF) == 1 ? VK_XBUTTON1 : (((msll.mouseData >> 16) & 0xFFFF) == 2 ? VK_XBUTTON2 : 0u),
+                        _ => 0u
+                    };
+                    if (buttonVk != 0 && (msll.dwFlags & LLMHF_INJECTED) == 0 && !mouseRecordingService.IsRecording)
                         {
                             uint mods = 0;
                             if ((GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0) mods |= MOD_CONTROL;
@@ -1562,7 +1569,6 @@ namespace PowerfulWizard
                             {
                                 Dispatcher.Invoke(() => OnStopButtonClick(this, new RoutedEventArgs()));
                             }
-                        }
                     }
                 }
                 
