@@ -19,9 +19,6 @@ namespace PowerfulWizard.Services
         private DispatcherTimer _playbackTimer;
         
         // Drag detection
-        private bool _isLeftButtonDown;
-        private bool _isRightButtonDown;
-        private bool _isMiddleButtonDown;
         private Point _lastDragPosition;
         
         public event EventHandler<RecordedAction>? ActionRecorded;
@@ -38,17 +35,12 @@ namespace PowerfulWizard.Services
             get 
             {
                 var result = _completedRecording;
-                Console.WriteLine($"CurrentRecording getter called. Completed: {(result != null ? $"{result.Actions.Count} actions" : "null")}, Session: {(_currentRecordingSession != null ? $"{_currentRecordingSession.Actions.Count} actions" : "null")}, _isRecording={_isRecording}, _isPlaying={_isPlaying}");
-                Console.WriteLine($"Returning: {(result != null ? $"{result.Actions.Count} actions" : "null")}");
                 return result;
             }
         }
         
         // Temporary pause for UI interactions
         private bool _isPaused;
-        
-        // Debug counter
-        private int _tickCount;
         
         public MouseRecordingService()
         {
@@ -65,15 +57,10 @@ namespace PowerfulWizard.Services
         
         public void StartRecording()
         {
-            Console.WriteLine($"StartRecording called. Current state: _isRecording={_isRecording}, _isPlaying={_isPlaying}");
-            
             if (_isRecording || _isPlaying) 
             {
-                Console.WriteLine("Cannot start recording - already recording or playing");
                 return;
             }
-            
-            Console.WriteLine("Starting new recording...");
             
             // Clear the current recording list but preserve the session until we save it
             _currentRecording.Clear();
@@ -85,7 +72,6 @@ namespace PowerfulWizard.Services
             _isRecording = true;
             _isPaused = false; // Reset paused state for new recording
             _recordingStartTime = DateTime.Now;
-            _tickCount = 0;
             
             // Initialize position tracking
             if (GetCursorPos(out POINT point))
@@ -93,33 +79,19 @@ namespace PowerfulWizard.Services
                 _lastDragPosition = new Point(point.X, point.Y);
             }
             
-            // Reset button states for new recording
-            _isLeftButtonDown = false;
-            _isRightButtonDown = false;
-            _isMiddleButtonDown = false;
-            
-            Console.WriteLine($"Recording started - Fresh recording, Button states reset. Session actions: {_currentRecordingSession.Actions.Count}");
-            Console.WriteLine($"State after start: _isRecording={_isRecording}, _isPlaying={_isPlaying}, _isPaused={_isPaused}");
-            
             _recordingTimer.Start();
             RecordingStarted?.Invoke(this, EventArgs.Empty);
         }
         
         public void StopRecording()
         {
-            Console.WriteLine($"StopRecording called. Current state: _isRecording={_isRecording}, _isPlaying={_isPlaying}");
-            
             if (!_isRecording) 
             {
-                Console.WriteLine("Cannot stop recording - not currently recording");
                 return;
             }
             
-            Console.WriteLine("Stopping recording...");
             _isRecording = false;
             _recordingTimer.Stop();
-            
-            Console.WriteLine($"Stopping recording. Current actions: {_currentRecording.Count}");
             
             // Save the current recording as the completed recording
             if (_currentRecording.Count > 0)
@@ -136,45 +108,28 @@ namespace PowerfulWizard.Services
                 // Calculate total duration
                 var lastAction = _currentRecording[_currentRecording.Count - 1];
                 _completedRecording.TotalDuration = (int)(lastAction.Timestamp + lastAction.Duration);
-                
-                Console.WriteLine($"Recording completed: {_currentRecording.Count} actions, Total duration: {_completedRecording.TotalDuration}ms");
-                Console.WriteLine($"Completed recording now has: {_completedRecording.Actions.Count} actions");
             }
             else
             {
-                Console.WriteLine("No actions to save - clearing completed recording");
                 _completedRecording = null;
             }
-            
-            // Reset button states when stopping
-            _isLeftButtonDown = false;
-            _isRightButtonDown = false;
-            _isMiddleButtonDown = false;
-            
-            Console.WriteLine("Recording stopped - Button states reset");
             
             RecordingStopped?.Invoke(this, EventArgs.Empty);
         }
         
         public void StartPlayback(MouseRecording recording, double speedMultiplier = 1.0)
         {
-            Console.WriteLine($"StartPlayback called with recording: {(recording != null ? $"{recording.Actions.Count} actions" : "null")}");
-            Console.WriteLine($"Current state: _isRecording={_isRecording}, _isPlaying={_isPlaying}");
-            
             if (_isRecording || _isPlaying || recording.Actions.Count == 0) 
             {
-                Console.WriteLine($"Cannot start playback: _isRecording={_isRecording}, _isPlaying={_isPlaying}, actions={recording?.Actions.Count ?? 0}");
                 return;
             }
             
-            Console.WriteLine("Starting playback...");
             _isPlaying = true;
             _currentActionIndex = 0;
             _playbackStartTime = DateTime.Now;
             
             // Set the recording session for playback
             _currentRecordingSession = recording;
-            Console.WriteLine($"Set playback session: {_currentRecordingSession.Actions.Count} actions");
             
             // Adjust timer interval based on speed multiplier
             _playbackTimer.Interval = TimeSpan.FromMilliseconds(16 / speedMultiplier);
@@ -206,25 +161,30 @@ namespace PowerfulWizard.Services
             };
             
             _currentRecording.Add(action);
-            Console.WriteLine($"Mouse move recorded at {position}, Total actions: {_currentRecording.Count}");
             ActionRecorded?.Invoke(this, action);
         }
         
-        public void RecordClick(RecordedActionType clickType, Point position)
+        public void RecordAction(RecordedActionType actionType, Point position)
         {
             if (!_isRecording || _isPaused) return;
             
             var timestamp = (long)(DateTime.Now - _recordingStartTime).TotalMilliseconds;
             var action = new RecordedAction
             {
-                ActionType = clickType,
+                ActionType = actionType,
                 Position = position,
                 Timestamp = timestamp,
-                Duration = 50 // Default click duration
+                Duration = 0
             };
             
             _currentRecording.Add(action);
             ActionRecorded?.Invoke(this, action);
+        }
+        
+        // Kept for backward compatibility if needed, but forwards to RecordAction
+        public void RecordClick(RecordedActionType clickType, Point position)
+        {
+            RecordAction(clickType, position);
         }
         
         public void RecordClickAtCurrentPosition(RecordedActionType clickType)
@@ -234,7 +194,7 @@ namespace PowerfulWizard.Services
             if (GetCursorPos(out POINT point))
             {
                 var position = new Point(point.X, point.Y);
-                RecordClick(clickType, position);
+                RecordAction(clickType, position);
             }
         }
         
@@ -247,23 +207,17 @@ namespace PowerfulWizard.Services
                 var position = new Point(point.X, point.Y);
                 _lastDragPosition = position;
                 
-                // Record the click action immediately
+                // Record the Down action
                 switch (buttonType)
                 {
                     case RecordedActionType.LeftClick:
-                        _isLeftButtonDown = true;
-                        RecordClick(RecordedActionType.LeftClick, position);
-                        Console.WriteLine($"LEFT BUTTON DOWN at {position} - Button state set to TRUE");
+                        RecordAction(RecordedActionType.LeftDown, position);
                         break;
                     case RecordedActionType.RightClick:
-                        _isRightButtonDown = true;
-                        RecordClick(RecordedActionType.RightClick, position);
-                        Console.WriteLine($"RIGHT BUTTON DOWN at {position} - Button state set to TRUE");
+                        RecordAction(RecordedActionType.RightDown, position);
                         break;
                     case RecordedActionType.MiddleClick:
-                        _isMiddleButtonDown = true;
-                        RecordClick(RecordedActionType.MiddleClick, position);
-                        Console.WriteLine($"MIDDLE BUTTON DOWN at {position} - Button state set to TRUE");
+                        RecordAction(RecordedActionType.MiddleDown, position);
                         break;
                 }
             }
@@ -273,20 +227,22 @@ namespace PowerfulWizard.Services
         {
             if (!_isRecording) return;
             
-            switch (buttonType)
+            if (GetCursorPos(out POINT point))
             {
-                case RecordedActionType.LeftClick:
-                    _isLeftButtonDown = false;
-                    Console.WriteLine("LEFT BUTTON UP");
-                    break;
+                var position = new Point(point.X, point.Y);
+                
+                switch (buttonType)
+                {
+                    case RecordedActionType.LeftClick:
+                        RecordAction(RecordedActionType.LeftUp, position);
+                        break;
                     case RecordedActionType.RightClick:
-                    _isRightButtonDown = false;
-                    Console.WriteLine("RIGHT BUTTON UP");
-                    break;
-                case RecordedActionType.MiddleClick:
-                    _isMiddleButtonDown = false;
-                    Console.WriteLine("MIDDLE BUTTON UP");
-                    break;
+                        RecordAction(RecordedActionType.RightUp, position);
+                        break;
+                    case RecordedActionType.MiddleClick:
+                        RecordAction(RecordedActionType.MiddleUp, position);
+                        break;
+                }
             }
         }
         
@@ -304,28 +260,6 @@ namespace PowerfulWizard.Services
         {
             _currentRecording.Clear();
             _currentRecordingSession = null;
-            // Don't clear _completedRecording - that's what the UI needs for playback
-            Console.WriteLine("Current recording cleared, completed recording preserved");
-        }
-        
-        private void RecordDrag(RecordedActionType dragType, Point position)
-        {
-            if (!_isRecording || _isPaused) return;
-            
-            var timestamp = (long)(DateTime.Now - _recordingStartTime).TotalMilliseconds;
-            var action = new RecordedAction
-            {
-                ActionType = dragType,
-                Position = position,
-                Timestamp = timestamp,
-                Duration = 0
-            };
-            
-            _currentRecording.Add(action);
-            ActionRecorded?.Invoke(this, action);
-            
-            // Debug: Log drag actions
-            Console.WriteLine($"DRAG RECORDED: {dragType} at {position}, Total actions: {_currentRecording.Count}");
         }
         
         private void OnRecordingTimerTick(object? sender, EventArgs e)
@@ -337,82 +271,32 @@ namespace PowerfulWizard.Services
             {
                 var position = new Point(point.X, point.Y);
                 
-                // Debug: Log button states every 100 ticks (about every 1.6 seconds)
-                if (_tickCount % 100 == 0)
+                // Check for significant movement
+                var distance = Math.Sqrt(Math.Pow(position.X - _lastDragPosition.X, 2) + 
+                                       Math.Pow(position.Y - _lastDragPosition.Y, 2));
+                                       
+                if (distance > 2)
                 {
-                    Console.WriteLine($"TIMER TICK: Left={_isLeftButtonDown}, Right={_isRightButtonDown}, Middle={_isMiddleButtonDown}, Pos={position}");
-                }
-                _tickCount++;
-                
-                // Check if we're dragging (button held down while moving)
-                if (_isLeftButtonDown)
-                {
-                    var distance = Math.Sqrt(Math.Pow(position.X - _lastDragPosition.X, 2) + 
-                                           Math.Pow(position.Y - _lastDragPosition.Y, 2));
-                    if (distance > 2.0) // More reasonable drag detection threshold
-                    {
-                        RecordDrag(RecordedActionType.LeftDrag, position);
-                        _lastDragPosition = position;
-                        Console.WriteLine($"DRAG TICK: Left drag at {position}, distance: {distance:F2}");
-                    }
-                }
-                else if (_isRightButtonDown)
-                {
-                    var distance = Math.Sqrt(Math.Pow(position.X - _lastDragPosition.X, 2) + 
-                                           Math.Pow(position.Y - _lastDragPosition.Y, 2));
-                    if (distance > 2.0)
-                    {
-                        RecordDrag(RecordedActionType.RightDrag, position);
-                        _lastDragPosition = position;
-                        Console.WriteLine($"DRAG TICK: Right drag at {position}, distance: {distance:F2}");
-                    }
-                }
-                else if (_isMiddleButtonDown)
-                {
-                    var distance = Math.Sqrt(Math.Pow(position.X - _lastDragPosition.X, 2) + 
-                                           Math.Pow(position.Y - _lastDragPosition.Y, 2));
-                    if (distance > 2.0)
-                    {
-                        RecordDrag(RecordedActionType.MiddleDrag, position);
-                        _lastDragPosition = position;
-                        Console.WriteLine($"DRAG TICK: Middle drag at {position}, distance: {distance:F2}");
-                    }
-                }
-                else
-                {
-                    // Normal mouse movement - only record if moved significantly
-                    var distance = Math.Sqrt(Math.Pow(position.X - _lastDragPosition.X, 2) + 
-                                           Math.Pow(position.Y - _lastDragPosition.Y, 2));
-                    if (distance > 2) // Reduced threshold for smoother movement
-                    {
-                        RecordMouseMove(position);
-                        _lastDragPosition = position;
-                    }
+                    // We just record moves. The Down/Up state determines if it's a drag.
+                    // This simplifies logic and is more robust.
+                    RecordMouseMove(position);
+                    _lastDragPosition = position;
                 }
             }
         }
         
-
-        
         private void OnPlaybackTimerTick(object? sender, EventArgs e)
         {
-            if (!_isPlaying || _currentRecordingSession == null) 
-            {
-                Console.WriteLine($"Playback timer tick skipped: _isPlaying={_isPlaying}, _currentRecordingSession={(_currentRecordingSession != null ? "not null" : "null")}");
-                return;
-            }
+            if (!_isPlaying || _currentRecordingSession == null) return;
             
             var currentTime = (long)(DateTime.Now - _playbackStartTime).TotalMilliseconds;
             var actions = _currentRecordingSession.Actions;
-            
-            Console.WriteLine($"Playback timer tick: currentTime={currentTime}ms, actionIndex={_currentActionIndex}/{actions.Count}");
             
             // Execute actions that should happen at this time
             while (_currentActionIndex < actions.Count && 
                    actions[_currentActionIndex].Timestamp <= currentTime)
             {
                 var action = actions[_currentActionIndex];
-                Console.WriteLine($"Executing action {_currentActionIndex}: {action.ActionType} at {action.Position}");
                 ExecuteAction(action);
                 _currentActionIndex++;
                 
@@ -422,50 +306,88 @@ namespace PowerfulWizard.Services
             // Check if playback is complete
             if (_currentActionIndex >= actions.Count)
             {
-                Console.WriteLine("Playback complete - stopping");
                 StopPlayback();
             }
         }
         
         private void ExecuteAction(RecordedAction action)
         {
-            Console.WriteLine($"ExecuteAction: {action.ActionType} at {action.Position}");
+            // Always use SendInput for movement to maintain input stream integrity
+            // Convert coordinates to absolute range (0-65535)
+            MoveMouse(action.Position);
             
             switch (action.ActionType)
             {
                 case RecordedActionType.MouseMove:
-                    Console.WriteLine($"Moving cursor to {action.Position}");
-                    SetCursorPos((int)action.Position.X, (int)action.Position.Y);
+                case RecordedActionType.LeftDrag:   // Backward compatibility
+                case RecordedActionType.RightDrag:  // Backward compatibility
+                case RecordedActionType.MiddleDrag: // Backward compatibility
+                    // Already moved mouse above
                     break;
+                    
+                case RecordedActionType.LeftDown:
+                    SimulateClick(MOUSEEVENTF_LEFTDOWN);
+                    break;
+                case RecordedActionType.LeftUp:
+                    SimulateClick(MOUSEEVENTF_LEFTUP);
+                    break;
+                    
+                case RecordedActionType.RightDown:
+                    SimulateClick(MOUSEEVENTF_RIGHTDOWN);
+                    break;
+                case RecordedActionType.RightUp:
+                    SimulateClick(MOUSEEVENTF_RIGHTUP);
+                    break;
+                    
+                case RecordedActionType.MiddleDown:
+                    SimulateClick(MOUSEEVENTF_MIDDLEDOWN);
+                    break;
+                case RecordedActionType.MiddleUp:
+                    SimulateClick(MOUSEEVENTF_MIDDLEUP);
+                    break;
+                    
+                // Legacy full-click support
                 case RecordedActionType.LeftClick:
-                    Console.WriteLine($"Left click at {action.Position}");
-                    SetCursorPos((int)action.Position.X, (int)action.Position.Y);
                     SimulateClick(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP);
                     break;
                 case RecordedActionType.RightClick:
-                    Console.WriteLine($"Right click at {action.Position}");
-                    SetCursorPos((int)action.Position.X, (int)action.Position.Y);
                     SimulateClick(MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_RIGHTUP);
                     break;
                 case RecordedActionType.MiddleClick:
-                    Console.WriteLine($"Middle click at {action.Position}");
-                    SetCursorPos((int)action.Position.X, (int)action.Position.Y);
                     SimulateClick(MOUSEEVENTF_MIDDLEDOWN | MOUSEEVENTF_MIDDLEUP);
                     break;
                 case RecordedActionType.DoubleClick:
-                    Console.WriteLine($"Double click at {action.Position}");
-                    SetCursorPos((int)action.Position.X, (int)action.Position.Y);
                     SimulateClick(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP);
                     Thread.Sleep(50);
                     SimulateClick(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP);
                     break;
-                case RecordedActionType.LeftDrag:
-                case RecordedActionType.RightDrag:
-                case RecordedActionType.MiddleDrag:
-                    Console.WriteLine($"Drag at {action.Position}");
-                    SetCursorPos((int)action.Position.X, (int)action.Position.Y);
-                    break;
             }
+        }
+        
+        private void MoveMouse(Point position)
+        {
+            int screenWidth = GetSystemMetrics(0); // SM_CXSCREEN
+            int screenHeight = GetSystemMetrics(1); // SM_CYSCREEN
+            
+            // Calculate absolute coordinates (0-65535)
+            int absoluteX = (int)((position.X * 65535) / screenWidth);
+            int absoluteY = (int)((position.Y * 65535) / screenHeight);
+            
+            var input = new INPUT
+            {
+                type = INPUT_MOUSE,
+                mi = new MOUSEINPUT
+                {
+                    dx = absoluteX,
+                    dy = absoluteY,
+                    mouseData = 0,
+                    dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE,
+                    time = 0,
+                    dwExtraInfo = IntPtr.Zero
+                }
+            };
+            
+            SendInput(1, new[] { input }, Marshal.SizeOf(typeof(INPUT)));
         }
         
         private void SimulateClick(uint flags)
@@ -497,13 +419,18 @@ namespace PowerfulWizard.Services
         [DllImport("user32.dll", SetLastError = true)]
         private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
         
+        [DllImport("user32.dll")]
+        private static extern int GetSystemMetrics(int nIndex);
+        
         private const int INPUT_MOUSE = 0;
+        private const int MOUSEEVENTF_MOVE = 0x0001;
         private const int MOUSEEVENTF_LEFTDOWN = 0x0002;
         private const int MOUSEEVENTF_LEFTUP = 0x0004;
         private const int MOUSEEVENTF_RIGHTDOWN = 0x0008;
         private const int MOUSEEVENTF_RIGHTUP = 0x0010;
         private const int MOUSEEVENTF_MIDDLEDOWN = 0x0020;
         private const int MOUSEEVENTF_MIDDLEUP = 0x0040;
+        private const int MOUSEEVENTF_ABSOLUTE = 0x8000;
         
         [StructLayout(LayoutKind.Sequential)]
         private struct INPUT
@@ -529,7 +456,5 @@ namespace PowerfulWizard.Services
             public int X;
             public int Y;
         }
-        
-
     }
 }

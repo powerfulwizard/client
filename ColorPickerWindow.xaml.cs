@@ -29,14 +29,14 @@ namespace PowerfulWizard
         private static extern IntPtr GetModuleHandle(string lpModuleName);
         
         private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
-        private LowLevelMouseProc _mouseProc;
+        private LowLevelMouseProc? _mouseProc;
         
         public System.Windows.Media.Color SelectedColor { get; set; }
         public int ColorTolerance { get; set; }
         
-        private readonly MouseTrailService _mouseTrailService;
+        private readonly MouseTrailService? _mouseTrailService;
 
-        public ColorPickerWindow(MouseTrailService mouseTrailService = null)
+        public ColorPickerWindow(MouseTrailService? mouseTrailService = null)
         {
             _mouseTrailService = mouseTrailService;
             InitializeComponent();
@@ -282,4 +282,3 @@ namespace PowerfulWizard
         }
     }
 }
-

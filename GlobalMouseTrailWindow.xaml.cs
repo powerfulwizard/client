@@ -11,7 +11,7 @@ namespace PowerfulWizard
         private readonly MouseTrailService _mouseTrailService;
         
         // Static access to the mouse trail service
-        public static MouseTrailService CurrentMouseTrailService { get; private set; }
+        public static MouseTrailService CurrentMouseTrailService { get; private set; } = null!;
         private readonly DispatcherTimer _mouseTracker;
         
         [DllImport("user32.dll")]

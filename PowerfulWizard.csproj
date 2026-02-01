@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <AssemblyName>PowerfulWizardAutoClicker</AssemblyName>
         <ApplicationIcon>favicon.ico</ApplicationIcon>
@@ -49,4 +49,3 @@
         <Copy SourceFiles="@(OpenCvNativeFiles)" DestinationFolder="$(OutputPath)" />
     </Target>
 </Project>
-

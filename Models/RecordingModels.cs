@@ -11,7 +11,13 @@ namespace PowerfulWizard.Models
         DoubleClick,
         LeftDrag,
         RightDrag,
-        MiddleDrag
+        MiddleDrag,
+        LeftDown,
+        LeftUp,
+        RightDown,
+        RightUp,
+        MiddleDown,
+        MiddleUp
     }
 
     public class RecordedAction

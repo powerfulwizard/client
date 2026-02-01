@@ -7,6 +7,7 @@ using Microsoft.Win32;
 using PowerfulWizard.Models;
 using System.Windows.Threading;
 using System.Windows.Media;
+using System;
 
 namespace PowerfulWizard
 {
@@ -15,10 +16,6 @@ namespace PowerfulWizard
         private Sequence _currentSequence;
         
         public Sequence CurrentSequence => _currentSequence;
-        
-
-        
-
         
         public SequenceConfiguratorWindow(Sequence? existingSequence = null)
         {
@@ -160,7 +157,7 @@ namespace PowerfulWizard
                 }
             }
         }
-        
+
         private void OnUseSequenceClick(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(_currentSequence.Name))
@@ -239,7 +236,7 @@ namespace PowerfulWizard
                 }
             }
             }
-}
+    }
     
     // Converters
     public class ClickTypeToIndexConverter : IValueConverter
@@ -366,9 +363,26 @@ namespace PowerfulWizard
         {
             if (value is TargetMode targetMode)
             {
-                return targetMode == TargetMode.ColorClick;
+                return targetMode == TargetMode.ColorClick ? Visibility.Visible : Visibility.Collapsed;
             }
-            return false;
+            return Visibility.Collapsed;
+        }
+        
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public class IsClickAreaModeConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is TargetMode targetMode)
+            {
+                return targetMode == TargetMode.ClickArea ? Visibility.Visible : Visibility.Collapsed;
+            }
+            return Visibility.Collapsed;
         }
         
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

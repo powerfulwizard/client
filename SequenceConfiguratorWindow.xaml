@@ -15,6 +15,7 @@
         <local:IsCustomSpeedConverter x:Key="IsCustomSpeedConverter"/>
         <local:TargetModeToIndexConverter x:Key="TargetModeToIndexConverter"/>
         <local:IsColorClickModeConverter x:Key="IsColorClickModeConverter"/>
+        <local:IsClickAreaModeConverter x:Key="IsClickAreaModeConverter"/>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         
                           <!-- Dark Mode Styles - Matching Main Window -->
@@ -343,36 +344,38 @@
                                         </Grid>
                                         
                                                                                  <!-- Custom Position -->
-                                         <Grid>
-                                             <Grid.ColumnDefinitions>
-                                                 <ColumnDefinition Width="Auto"/>
-                                                 <ColumnDefinition Width="Auto"/>
-                                                 <ColumnDefinition Width="Auto"/>
-                                             </Grid.ColumnDefinitions>
-                                             
-                                             <Label Grid.Column="0" Content="Custom Position:" Foreground="White"/>
-                                             <CheckBox Grid.Column="1" Content="Enable" Margin="5,0,5,0"
-                                                       IsChecked="{Binding UseRandomPosition, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
-                                             <Button Grid.Column="2" Content="Set Area" Width="70" Height="25"
-                                                     Click="OnSetClickAreaClick" Tag="{Binding}"
-                                                     IsEnabled="{Binding UseRandomPosition}" Style="{StaticResource SetAreaButtonStyle}"/>
-                                         </Grid>
-                                         
-                                         <!-- Area Display -->
-                                         <Grid Margin="0,10,0,0" Visibility="{Binding UseRandomPosition, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                             <Grid.ColumnDefinitions>
-                                                 <ColumnDefinition Width="Auto"/>
-                                                 <ColumnDefinition Width="*"/>
-                                             </Grid.ColumnDefinitions>
-                                             
-                                             <Label Grid.Column="0" Content="Selected Area:" Foreground="White" VerticalAlignment="Center"/>
-                                             <Border Grid.Column="1" Background="#1E1E1E" BorderBrush="#3F3F46" BorderThickness="1" 
-                                                     Height="40" Margin="5,0,0,0" CornerRadius="3">
-                                                 <TextBlock Text="{Binding ClickArea, StringFormat='X: {0:F0}, Y: {1:F0}, W: {2:F0}, H: {3:F0}'}" 
-                                                            Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Center" 
-                                                            FontFamily="Consolas" FontSize="11"/>
-                                             </Border>
-                                         </Grid>
+                                        <StackPanel Visibility="{Binding TargetMode, Converter={StaticResource IsClickAreaModeConverter}}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                
+                                                <Label Grid.Column="0" Content="Custom Position:" Foreground="White"/>
+                                                <CheckBox Grid.Column="1" Content="Enable" Margin="5,0,5,0"
+                                                          IsChecked="{Binding UseRandomPosition, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="2" Content="Set Area" Width="70" Height="25"
+                                                        Click="OnSetClickAreaClick" Tag="{Binding}"
+                                                        IsEnabled="{Binding UseRandomPosition}" Style="{StaticResource SetAreaButtonStyle}"/>
+                                            </Grid>
+                                            
+                                            <!-- Area Display -->
+                                            <Grid Margin="0,10,0,0" Visibility="{Binding UseRandomPosition, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                
+                                                <Label Grid.Column="0" Content="Selected Area:" Foreground="White" VerticalAlignment="Center"/>
+                                                <Border Grid.Column="1" Background="#1E1E1E" BorderBrush="#3F3F46" BorderThickness="1" 
+                                                        Height="40" Margin="5,0,0,0" CornerRadius="3">
+                                                    <TextBlock Text="{Binding ClickArea, StringFormat='X: {0:F0}, Y: {1:F0}, W: {2:F0}, H: {3:F0}'}" 
+                                                               Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Center" 
+                                                               FontFamily="Consolas" FontSize="11"/>
+                                                </Border>
+                                            </Grid>
+                                        </StackPanel>
                                     </StackPanel>
                                 </Expander>
                             </Grid>

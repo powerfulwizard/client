@@ -1,4 +1,4 @@
-﻿using System.Configuration;
+using System.Configuration;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -619,15 +619,12 @@ namespace PowerfulWizard
             System.Diagnostics.Debug.WriteLine($"Color at current mouse position: R={color.R}, G={color.G}, B={color.B}");
             
             // Test color matching directly
-            if (targetColor != null)
-            {
-                int rDiff = Math.Abs(color.R - targetColor.R);
-                int gDiff = Math.Abs(color.G - targetColor.G);
-                int bDiff = Math.Abs(color.B - targetColor.B);
-                bool isMatch = rDiff <= colorTolerance && gDiff <= colorTolerance && bDiff <= colorTolerance;
-                
-                System.Diagnostics.Debug.WriteLine($"Color match test: Target({targetColor.R},{targetColor.G},{targetColor.B}) vs Mouse({color.R},{color.G},{color.B}) - Diffs({rDiff},{gDiff},{bDiff}) - Match: {isMatch}");
-            }
+            int rDiff = Math.Abs(color.R - targetColor.R);
+            int gDiff = Math.Abs(color.G - targetColor.G);
+            int bDiff = Math.Abs(color.B - targetColor.B);
+            bool isMatch = rDiff <= colorTolerance && gDiff <= colorTolerance && bDiff <= colorTolerance;
+            
+            System.Diagnostics.Debug.WriteLine($"Color match test: Target({targetColor.R},{targetColor.G},{targetColor.B}) vs Mouse({color.R},{color.G},{color.B}) - Diffs({rDiff},{gDiff},{bDiff}) - Match: {isMatch}");
             
             // Also test if the search area is valid
             if (colorSearchArea.Width > 0 && colorSearchArea.Height > 0)
@@ -643,12 +640,9 @@ namespace PowerfulWizard
                 System.Diagnostics.Debug.WriteLine($"Color at search area bottom-right: R={bottomRightColor.R}, G={bottomRightColor.G}, B={bottomRightColor.B}");
                 
                 // Test color matching for these points too
-                if (targetColor != null)
-                {
-                    TestColorMatch("top-left", testColor);
-                    TestColorMatch("center", centerColor);
-                    TestColorMatch("bottom-right", bottomRightColor);
-                }
+                TestColorMatch("top-left", testColor);
+                TestColorMatch("center", centerColor);
+                TestColorMatch("bottom-right", bottomRightColor);
                 
                 MessageBox.Show($"Mouse position: R={color.R}, G={color.G}, B={color.B}\nSearch area top-left: R={testColor.R}, G={testColor.G}, B={testColor.B}\nSearch area center: R={centerColor.R}, G={centerColor.G}, B={centerColor.B}\nSearch area bottom-right: R={bottomRightColor.R}, G={bottomRightColor.G}, B={bottomRightColor.B}", "Color Test");
             }
@@ -660,15 +654,12 @@ namespace PowerfulWizard
 
         private void TestColorMatch(string location, System.Windows.Media.Color color)
         {
-            if (targetColor != null)
-            {
-                int rDiff = Math.Abs(color.R - targetColor.R);
-                int gDiff = Math.Abs(color.G - targetColor.G);
-                int bDiff = Math.Abs(color.B - targetColor.B);
-                bool isMatch = rDiff <= colorTolerance && gDiff <= colorTolerance && bDiff <= colorTolerance;
-                
-                System.Diagnostics.Debug.WriteLine($"Color match test ({location}): Target({targetColor.R},{targetColor.G},{targetColor.B}) vs Found({color.R},{color.G},{color.B}) - Diffs({rDiff},{gDiff},{bDiff}) - Match: {isMatch}");
-            }
+            int rDiff = Math.Abs(color.R - targetColor.R);
+            int gDiff = Math.Abs(color.G - targetColor.G);
+            int bDiff = Math.Abs(color.B - targetColor.B);
+            bool isMatch = rDiff <= colorTolerance && gDiff <= colorTolerance && bDiff <= colorTolerance;
+            
+            System.Diagnostics.Debug.WriteLine($"Color match test ({location}): Target({targetColor.R},{targetColor.G},{targetColor.B}) vs Found({color.R},{color.G},{color.B}) - Diffs({rDiff},{gDiff},{bDiff}) - Match: {isMatch}");
         }
 
 
@@ -1363,7 +1354,7 @@ namespace PowerfulWizard
         {
             Console.WriteLine("Setting up mouse hook...");
             _mouseProc = MouseHookProc;
-            _mouseHookId = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc!, GetModuleHandle(null)!, 0);
+            _mouseHookId = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc!, GetModuleHandle(string.Empty)!, 0);
             
             if (_mouseHookId == IntPtr.Zero)
             {

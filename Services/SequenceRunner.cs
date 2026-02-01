@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Threading;
 using PowerfulWizard.Models;
 using System.Windows.Media;
+using System.Collections.Generic;
+using System;
 
 namespace PowerfulWizard.Services
 {
@@ -135,7 +137,7 @@ namespace PowerfulWizard.Services
                     break;
             }
 
-            ExecuteCurrentStep();
+            _ = ExecuteCurrentStepAsync();
         }
 
         public void StopSequence()
@@ -202,7 +204,7 @@ namespace PowerfulWizard.Services
             }
         }
 
-        private void ExecuteCurrentStep()
+        private async Task ExecuteCurrentStepAsync()
         {
             if (!_isRunning || _currentSequence == null || _currentStepIndex >= _currentSequence.Steps.Count)
             {
@@ -224,7 +226,7 @@ namespace PowerfulWizard.Services
             _pendingStepDelay = actualDelay;
 
             // Execute the click (this may start movement)
-            ExecuteClick(step);
+            await ExecuteClickAsync(step);
 
             // Update the overlay to highlight current step
             UpdateOverlayStep(_currentStepIndex);
@@ -233,7 +235,7 @@ namespace PowerfulWizard.Services
             UpdateProgress();
         }
 
-        private void ExecuteClick(SequenceStep step)
+        private async Task ExecuteClickAsync(SequenceStep step)
         {
             // Determine click position
             Point clickPosition;
@@ -282,8 +284,8 @@ namespace PowerfulWizard.Services
                 // Perform the click immediately at current position
                 PerformClick(step);
                 
-                // Validate click result and retry if needed - this will handle retries synchronously
-                HandleClickValidationAndRetry(step);
+                // Validate click result and retry if needed
+                await HandleClickValidationAndRetryAsync(step);
             }
         }
         
@@ -458,7 +460,7 @@ namespace PowerfulWizard.Services
             });
         }
         
-        private void OnMovementTimerTick(object? sender, EventArgs e)
+        private async void OnMovementTimerTick(object? sender, EventArgs e)
         {
             if (_currentStep >= _movementSteps)
             {
@@ -481,8 +483,8 @@ namespace PowerfulWizard.Services
                     var step = _currentSequence.Steps[_currentStepIndex];
                     PerformClick(step);
                     
-                    // Validate click result and retry if needed - this will handle retries synchronously
-                    HandleClickValidationAndRetry(step);
+                    // Validate click result and retry if needed
+                    await HandleClickValidationAndRetryAsync(step);
                 }
                 return;
             }
@@ -504,11 +506,6 @@ namespace PowerfulWizard.Services
 
             SetCursorPos((int)Math.Round(x), (int)Math.Round(y));
             
-            // Add trail point for automated cursor movement
-            var screenPosition = new Point(Math.Round(x), Math.Round(y));
-            // Note: We'll need to access the mouse trail service from here
-            // For now, we'll add this functionality later
-            
             _currentStep++;
             
             // Update timer interval for next step if we have more steps
@@ -518,9 +515,6 @@ namespace PowerfulWizard.Services
             }
         }
         
-        /// <summary>
-        /// Adds a human-like mouse stutter/bump at click time (1-3 pixels)
-        /// </summary>
         private void AddMouseStutter()
         {
             try
@@ -556,19 +550,11 @@ namespace PowerfulWizard.Services
             }
         }
         
-        /// <summary>
-        /// Applies easing function for more natural movement (fast start, slow finish)
-        /// </summary>
         private double ApplyEasingFunction(double t)
         {
-            // Ease-out function: starts fast, slows down towards the end
-            // This creates more human-like movement patterns
             return 1.0 - Math.Pow(1.0 - t, 3); // Cubic ease-out
         }
         
-        /// <summary>
-        /// Starts the return movement from overshoot point to actual target
-        /// </summary>
         private void StartOvershootReturn()
         {
             try
@@ -624,16 +610,18 @@ namespace PowerfulWizard.Services
                 AddMouseStutter();
                 if (_currentSequence != null && _currentStepIndex < _currentSequence.Steps.Count)
                 {
+                    // Since this is inside sync event handler but we need to call async methods...
+                    // We will fire and forget here as this is a fallback path
                     var step = _currentSequence.Steps[_currentStepIndex];
                     PerformClick(step);
-                    HandleClickValidationAndRetry(step);
+                    _ = HandleClickValidationAndRetryAsync(step);
                 }
             }
         }
         
         private void StartStepDelayTimer(SequenceStep step)
         {
-            // Notify step executed (moved here from ExecuteCurrentStep)
+            // Notify step executed
             StepExecuted?.Invoke(this, new SequenceStepEventArgs
             {
                 Step = step,
@@ -669,8 +657,6 @@ namespace PowerfulWizard.Services
             }
         }
         
-        // .NET 8 has Math.Clamp built-in, no need for custom implementation
-
         private void PerformLeftClick()
         {
             var inputs = new INPUT[2];
@@ -718,7 +704,7 @@ namespace PowerfulWizard.Services
             PerformLeftClick();
         }
 
-        private void HandleClickValidationAndRetry(SequenceStep step)
+        private async Task HandleClickValidationAndRetryAsync(SequenceStep step)
         {
             try
             {
@@ -730,8 +716,8 @@ namespace PowerfulWizard.Services
                     return;
                 }
                 
-                // Wait for the click indicator to appear (frames appear immediately)
-                System.Threading.Thread.Sleep(50); // Reduced wait time
+                // Wait for the click indicator to appear
+                await Task.Delay(50); // Reduced wait time
                 
                 // Get current cursor position
                 GetCursorPos(out POINT currentPos);
@@ -747,8 +733,6 @@ namespace PowerfulWizard.Services
                 
                 System.Diagnostics.Debug.WriteLine($"Click validation: Checking 4x4 area around ({clickPosition.X}, {clickPosition.Y}) for crosses");
                 
-                // Simple approach: Use direct pixel sampling instead of OpenCV
-                // Sample a few pixels in the tiny area to check for yellow
                 bool yellowDetected = false;
                 
                 try
@@ -786,21 +770,20 @@ namespace PowerfulWizard.Services
                     System.Diagnostics.Debug.WriteLine($"Click validation: YELLOW cross detected - retrying click immediately");
                     
                     // Wait a bit before retry
-                    System.Threading.Thread.Sleep(100);
+                    await Task.Delay(100);
                     
                     // Retry the click with a new position
-                    RetryClickWithNewPositionSync(step, clickPosition);
+                    await RetryClickWithNewPositionAsync(step, clickPosition);
                     
                     // Wait a bit for the retry click to register
-                    System.Threading.Thread.Sleep(50);
+                    await Task.Delay(50);
                     
                     // After retry, start the delay timer
                     StartStepDelayTimer(step);
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"Click validation: No yellow cross detected - assuming success (red or no indicator)");
-                    // No yellow cross = success, start the normal delay timer
+                    System.Diagnostics.Debug.WriteLine($"Click validation: No yellow cross detected - assuming success");
                     StartStepDelayTimer(step);
                 }
             }
@@ -812,7 +795,7 @@ namespace PowerfulWizard.Services
             }
         }
 
-        private void RetryClickWithNewPositionSync(SequenceStep step, Point previousPosition)
+        private async Task RetryClickWithNewPositionAsync(SequenceStep step, Point previousPosition)
         {
             try
             {
@@ -820,7 +803,6 @@ namespace PowerfulWizard.Services
                 
                 if (step.TargetMode == TargetMode.ColorClick)
                 {
-                    // For color clicks, find a new color match
                     var newColorPosition = ColorDetectionService.FindMatchingColors(
                         step.TargetColor, 
                         step.ColorTolerance, 
@@ -830,43 +812,34 @@ namespace PowerfulWizard.Services
                     if (newColorPosition.HasValue)
                     {
                         newPosition = newColorPosition.Value;
-                        System.Diagnostics.Debug.WriteLine($"Retry: Found new color position at ({newPosition.X}, {newPosition.Y})");
                     }
                     else
                     {
-                        // Fallback to random position in search area
                         int x = _random.Next((int)step.ColorSearchArea.X, (int)(step.ColorSearchArea.X + step.ColorSearchArea.Width));
                         int y = _random.Next((int)step.ColorSearchArea.Y, (int)(step.ColorSearchArea.Y + step.ColorSearchArea.Height));
                         newPosition = new Point(x, y);
-                        System.Diagnostics.Debug.WriteLine($"Retry: Using random position at ({newPosition.X}, {newPosition.Y})");
                     }
                 }
                 else if (step.UseRandomPosition)
                 {
-                    // For random position clicks, generate a new random position
                     int x = _random.Next((int)step.ClickArea.X, (int)(step.ClickArea.X + step.ClickArea.Width));
                     int y = _random.Next((int)step.ClickArea.Y, (int)(step.ClickArea.Y + step.ClickArea.Height));
                     newPosition = new Point(x, y);
-                    System.Diagnostics.Debug.WriteLine($"Retry: Using new random position at ({newPosition.X}, {newPosition.Y})");
                 }
                 else
                 {
-                    // For fixed position, try a small offset
                     newPosition = new Point(
                         previousPosition.X + _random.Next(-10, 11),
                         previousPosition.Y + _random.Next(-10, 11)
                     );
-                    System.Diagnostics.Debug.WriteLine($"Retry: Using offset position at ({newPosition.X}, {newPosition.Y})");
                 }
                 
                 // Move to new position and click
                 SetCursorPos((int)newPosition.X, (int)newPosition.Y);
-                System.Threading.Thread.Sleep(100); // Small delay for movement
+                await Task.Delay(100);
                 
                 // Perform the click
                 PerformClick(step);
-                
-                System.Diagnostics.Debug.WriteLine($"Retry click completed at ({newPosition.X}, {newPosition.Y})");
             }
             catch (Exception ex)
             {
@@ -883,77 +856,11 @@ namespace PowerfulWizard.Services
             }
             catch
             {
-                return false; // Default to disabled if there's an error
+                return false;
             }
         }
 
-        private int GetValidationAreaSize()
-        {
-            try
-            {
-                var config = System.Configuration.ConfigurationManager.AppSettings;
-                return int.TryParse(config["ValidationAreaSize"], out int size) ? size : 50;
-            }
-            catch
-            {
-                return 50; // Default to 50 pixels if there's an error
-            }
-        }
-        
-        /// <summary>
-        /// Debug method to analyze what colors are actually in the validation area
-        /// </summary>
-        private void DebugColorsInArea(System.Windows.Rect area)
-        {
-            try
-            {
-                // Capture the area and analyze dominant colors
-                using (var bitmap = new System.Drawing.Bitmap((int)area.Width, (int)area.Height))
-                using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
-                {
-                    graphics.CopyFromScreen((int)area.Left, (int)area.Top, 0, 0, new System.Drawing.Size((int)area.Width, (int)area.Height));
-                    
-                    // Sample pixels in a grid pattern to detect cross patterns
-                    var samplePoints = new[] { 
-                        new System.Drawing.Point(5, 5),   // Top-left
-                        new System.Drawing.Point(10, 10), // Center
-                        new System.Drawing.Point(15, 15), // Bottom-right
-                        new System.Drawing.Point(5, 15),  // Bottom-left
-                        new System.Drawing.Point(15, 5)   // Top-right
-                    };
-                    
-                    System.Diagnostics.Debug.WriteLine($"Debug: Analyzing 20x20 area at ({area.Left}, {area.Top})");
-                    
-                    foreach (var point in samplePoints)
-                    {
-                        if (point.X < bitmap.Width && point.Y < bitmap.Height)
-                        {
-                            var pixel = bitmap.GetPixel(point.X, point.Y);
-                            var brightness = (pixel.R + pixel.G + pixel.B) / 3;
-                            var isBright = brightness > 100;
-                            
-                            System.Diagnostics.Debug.WriteLine($"Debug: Pixel at ({point.X}, {point.Y}) = R:{pixel.R} G:{pixel.G} B:{pixel.B} (Bright: {isBright})");
-                            
-                            // Check for potential cross indicators
-                            if (pixel.R > 200 && pixel.G < 100 && pixel.B < 100)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"  -> Potential RED cross indicator detected!");
-                            }
-                            else if (pixel.R > 200 && pixel.G > 200 && pixel.B < 100)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"  -> Potential YELLOW cross indicator detected!");
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Debug color analysis error: {ex.Message}");
-            }
-        }
-
-        private void OnSequenceTimerTick(object? sender, EventArgs e)
+        private async void OnSequenceTimerTick(object? sender, EventArgs e)
         {
             _sequenceTimer.Stop();
             _countdownTimer.Stop();
@@ -970,7 +877,7 @@ namespace PowerfulWizard.Services
             }
             else
             {
-                ExecuteCurrentStep();
+                await ExecuteCurrentStepAsync();
             }
         }
         
@@ -1014,7 +921,7 @@ namespace PowerfulWizard.Services
                 // Start next loop
                 _currentStepIndex = 0;
                 UpdateProgress();
-                ExecuteCurrentStep();
+                _ = ExecuteCurrentStepAsync();
             }
             else
             {
@@ -1055,7 +962,7 @@ namespace PowerfulWizard.Services
             }
         }
     }
-
+    
     public class SequenceProgressEventArgs : EventArgs
     {
         public int CurrentStepIndex { get; set; }
