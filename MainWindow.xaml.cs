@@ -31,7 +31,6 @@ namespace PowerfulWizard
         private uint recordHotkeyKey;
         private uint playHotkeyModifiers;
         private uint playHotkeyKey;
-        private bool useRandomPosition;
         private Rect clickArea;
         private Rect colorSearchArea; // New field for color search area
         private OverlayWindow? overlayWindow;
@@ -247,7 +246,6 @@ namespace PowerfulWizard
                 recordHotkeyKey = uint.TryParse(ConfigurationManager.AppSettings["RecordHotkeyKey"], out uint recordKey) ? recordKey : VK_F8;
                 playHotkeyModifiers = uint.TryParse(ConfigurationManager.AppSettings["PlayHotkeyModifiers"], out uint playMod) ? playMod : 0; // No modifiers for F9
                 playHotkeyKey = uint.TryParse(ConfigurationManager.AppSettings["PlayHotkeyKey"], out uint playKey) ? playKey : VK_F9;
-                useRandomPosition = bool.TryParse(ConfigurationManager.AppSettings["UseRandomPosition"], out bool useRandom) && useRandom;
                 double x = double.TryParse(ConfigurationManager.AppSettings["ClickAreaX"], out double cx) ? cx : 0;
                 double y = double.TryParse(ConfigurationManager.AppSettings["ClickAreaY"], out double cy) ? cy : 0;
                 double width = double.TryParse(ConfigurationManager.AppSettings["ClickAreaWidth"], out double cw) ? cw : 100;
@@ -279,7 +277,6 @@ namespace PowerfulWizard
                 recordHotkeyKey = VK_F8;
                 playHotkeyModifiers = 0; // No modifiers for F9
                 playHotkeyKey = VK_F9;
-                useRandomPosition = false;
                 clickArea = new Rect(0, 0, 100, 100);
                 colorSearchArea = new Rect(0, 0, 0, 0); // Empty search area
                 currentClickType = ClickType.LeftClick;
@@ -288,12 +285,7 @@ namespace PowerfulWizard
             }
 
             // UI initialization will be done in OnWindowLoaded after XAML is loaded
-            
-            if (clickArea.Width > 0 && clickArea.Height > 0)
-            {
-                overlayWindow = new OverlayWindow(clickArea);
-                overlayWindow.Show();
-            }
+            // Click area overlay is only shown when Target Mode is Click Area (see UpdateTargetModeVisibilityAndState)
             
             // Global mouse trail window is already initialized
         }
@@ -301,12 +293,11 @@ namespace PowerfulWizard
         private void OnWindowLoaded(object sender, RoutedEventArgs e)
         {
             // Initialize UI elements after XAML is fully loaded
-            UseRandomPositionCheck.IsChecked = useRandomPosition;
-            SetClickAreaButton.IsEnabled = useRandomPosition;
             ClickTypeComboBox.SelectedIndex = (int)currentClickType;
             
-            // Initialize TargetModeComboBox (default to Click Area mode)
+            // Initialize TargetModeComboBox (default to Mouse position - first in list)
             TargetModeComboBox.SelectedIndex = 0;
+            UpdateTargetModeVisibilityAndState();
             
             // Load movement speed settings
             try
@@ -545,33 +536,76 @@ namespace PowerfulWizard
 
 
 
-        private void OnUseRandomPositionChecked(object? sender, RoutedEventArgs e)
+        private void OnTargetModeChanged(object sender, SelectionChangedEventArgs e)
         {
-            useRandomPosition = UseRandomPositionCheck.IsChecked == true;
-            SetClickAreaButton.IsEnabled = useRandomPosition;
-            if (!useRandomPosition && overlayWindow != null)
+            UpdateTargetModeVisibilityAndState();
+        }
+
+        private void UpdateTargetModeVisibilityAndState()
+        {
+            if (SetColorButton == null || SetAreaButton == null) return;
+
+            int index = TargetModeComboBox?.SelectedIndex ?? 0;
+            // 0 = Mouse position, 1 = Click Area, 2 = Color Click
+            if (index == 0) // Mouse position - hide Set Area and Set Color
+            {
+                SetColorButton.Visibility = Visibility.Collapsed;
+                SetColorButton.IsEnabled = false;
+                SetAreaButton.Visibility = Visibility.Collapsed;
+                SetAreaButton.IsEnabled = false;
+                HideClickAreaOverlay();
+            }
+            else if (index == 1) // Click Area
+            {
+                SetColorButton.Visibility = Visibility.Collapsed;
+                SetColorButton.IsEnabled = false;
+                SetAreaButton.Visibility = Visibility.Visible;
+                SetAreaButton.IsEnabled = true;
+                if (clickArea.Width > 0 && clickArea.Height > 0)
+                    ShowClickAreaOverlay();
+                else
+                    HideClickAreaOverlay();
+            }
+            else // index == 2: Color Click
+            {
+                SetColorButton.Visibility = Visibility.Visible;
+                SetColorButton.IsEnabled = true;
+                SetAreaButton.Visibility = Visibility.Visible;
+                SetAreaButton.IsEnabled = true;
+                HideClickAreaOverlay();
+            }
+        }
+
+        private void ShowClickAreaOverlay()
+        {
+            if (clickArea.Width <= 0 || clickArea.Height <= 0) return;
+            if (overlayWindow == null)
+            {
+                overlayWindow = new OverlayWindow(clickArea);
+                overlayWindow.Show();
+            }
+            else
+            {
+                overlayWindow.UpdateRectangle(clickArea);
+                overlayWindow.Show();
+            }
+        }
+
+        private void HideClickAreaOverlay()
+        {
+            if (overlayWindow != null)
             {
                 overlayWindow.Close();
                 overlayWindow = null!;
             }
-            SaveSettings();
         }
 
-        private void OnTargetModeChanged(object sender, SelectionChangedEventArgs e)
+        private void OnSetAreaClick(object? sender, RoutedEventArgs e)
         {
-            // Add null check to prevent crash during XAML loading
-            if (SetColorButton == null || SetSearchAreaButton == null) return;
-            
-            if (TargetModeComboBox.SelectedIndex == 1) // Color Click
-            {
-                SetColorButton.IsEnabled = true;
-                SetSearchAreaButton.IsEnabled = true;
-            }
-            else
-            {
-                SetColorButton.IsEnabled = false;
-                SetSearchAreaButton.IsEnabled = false;
-            }
+            if (TargetModeComboBox.SelectedIndex == 1) // Click Area
+                OnSetClickAreaClick(sender, e);
+            else if (TargetModeComboBox.SelectedIndex == 2) // Color Click
+                OnSetSearchAreaClick(sender, e);
         }
 
         private void OnSetColorClick(object sender, RoutedEventArgs e)
@@ -599,15 +633,8 @@ namespace PowerfulWizard
             if (clickAreaWindow.ShowDialog() == true)
             {
                 clickArea = clickAreaWindow.SelectedArea;
-                if (overlayWindow == null)
-                {
-                    overlayWindow = new OverlayWindow(clickArea);
-                    overlayWindow.Show();
-                }
-                else
-                {
-                    overlayWindow.UpdateRectangle(clickArea);
-                }
+                if (TargetModeComboBox.SelectedIndex == 1) // Click Area mode - show overlay
+                    ShowClickAreaOverlay();
                 SaveSettings();
             }
         }
@@ -790,7 +817,6 @@ namespace PowerfulWizard
             try
             {
                 var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
-                config.AppSettings.Settings.Remove("UseRandomPosition");
                 config.AppSettings.Settings.Remove("ClickAreaX");
                 config.AppSettings.Settings.Remove("ClickAreaY");
                 config.AppSettings.Settings.Remove("ClickAreaWidth");
@@ -804,7 +830,6 @@ namespace PowerfulWizard
                 config.AppSettings.Settings.Remove("ColorSearchAreaY");
                 config.AppSettings.Settings.Remove("ColorSearchAreaWidth");
                 config.AppSettings.Settings.Remove("ColorSearchAreaHeight");
-                config.AppSettings.Settings.Add("UseRandomPosition", useRandomPosition.ToString());
                 config.AppSettings.Settings.Add("ClickAreaX", clickArea.X.ToString());
                 config.AppSettings.Settings.Add("ClickAreaY", clickArea.Y.ToString());
                 config.AppSettings.Settings.Add("ClickAreaWidth", clickArea.Width.ToString());
@@ -855,14 +880,14 @@ namespace PowerfulWizard
             {
                 if (int.TryParse(IntervalInput.Text, out int interval) && interval >= 100)
                 {
-                    if (useRandomPosition && (clickArea.Width <= 0 || clickArea.Height <= 0))
+                    if (TargetModeComboBox.SelectedIndex == 1 && (clickArea.Width <= 0 || clickArea.Height <= 0)) // Click Area mode
                     {
-                        MessageBox.Show("Please set a valid click area for random position.", "Invalid Click Area");
+                        MessageBox.Show("Please set a valid click area.", "Invalid Click Area");
                         return;
                     }
                     
                     // Start background color detection if in color click mode
-                    if (TargetModeComboBox.SelectedIndex == 1) // Color Click
+                    if (TargetModeComboBox.SelectedIndex == 2) // Color Click
                     {
                         StartBackgroundColorDetection();
                     }
@@ -1049,7 +1074,13 @@ namespace PowerfulWizard
             currentPosition = new Point(currentPos.X, currentPos.Y);
             
             // Determine target position based on target mode
-            if (TargetModeComboBox.SelectedIndex == 1) // Color Click
+            if (TargetModeComboBox.SelectedIndex == 0) // Mouse position - click at current cursor position, no movement at all
+            {
+                StatusLabel.Content = $"Status: Running - Clicking at current position ({currentPosition.X}, {currentPosition.Y})";
+                PerformMouseClick();
+                return; // Do not start movement timer - no Bézier, no SetCursorPos, no jitter
+            }
+            else if (TargetModeComboBox.SelectedIndex == 2) // Color Click
             {
                 // Use cached color target if available, otherwise fallback to random position
                 if (cachedColorTarget.HasValue)
@@ -1091,9 +1122,9 @@ namespace PowerfulWizard
                     StatusLabel.Content = $"Status: Running - No color found, clicking random at ({targetPosition.X}, {targetPosition.Y})";
                 }
             }
-            else if (useRandomPosition && clickArea.Width > 0 && clickArea.Height > 0)
+            else if (TargetModeComboBox.SelectedIndex == 1 && clickArea.Width > 0 && clickArea.Height > 0)
             {
-                // Traditional random position within click area
+                // Click Area: random position within click area
                 targetPosition = new Point(
                     clickArea.X + random.NextDouble() * clickArea.Width,
                     clickArea.Y + random.NextDouble() * clickArea.Height

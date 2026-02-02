@@ -20,7 +20,8 @@ namespace PowerfulWizard.Models
     public enum TargetMode
     {
         ClickArea,
-        ColorClick
+        ColorClick,
+        MousePosition
     }
 
     public enum LoopMode
@@ -45,7 +46,6 @@ namespace PowerfulWizard.Models
         private int _deviationMs;
         private MovementSpeed _movementSpeed;
         private int _customMovementDurationMs;
-        private bool _useRandomPosition;
         private Rect _clickArea;
         private string _description = string.Empty;
         private TargetMode _targetMode;
@@ -81,12 +81,6 @@ namespace PowerfulWizard.Models
         {
             get => _customMovementDurationMs;
             set => SetProperty(ref _customMovementDurationMs, value);
-        }
-
-        public bool UseRandomPosition
-        {
-            get => _useRandomPosition;
-            set => SetProperty(ref _useRandomPosition, value);
         }
 
         public Rect ClickArea
@@ -132,7 +126,6 @@ namespace PowerfulWizard.Models
             DeviationMs = 100;
             MovementSpeed = MovementSpeed.Medium;
             CustomMovementDurationMs = 150;
-            UseRandomPosition = false;
             ClickArea = new Rect(0, 0, 100, 100);
             Description = "New Step";
             TargetMode = TargetMode.ClickArea;

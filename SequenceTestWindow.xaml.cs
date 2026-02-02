@@ -177,13 +177,17 @@ namespace PowerfulWizard
             CurrentStepText.Text = step.Description;
             CurrentStepDetails.Text = $"{step.ClickType} - Delay: {actualDelay}ms (±{step.DeviationMs}ms)";
             
-            if (step.UseRandomPosition)
+            switch (step.TargetMode)
             {
-                CurrentStepDetails.Text += $" - Random position in area: {step.ClickArea.X:F0},{step.ClickArea.Y:F0} {step.ClickArea.Width:F0}x{step.ClickArea.Height:F0}";
-            }
-            else
-            {
-                CurrentStepDetails.Text += " - Current cursor position";
+                case TargetMode.ClickArea:
+                    CurrentStepDetails.Text += $" - Click area: {step.ClickArea.X:F0},{step.ClickArea.Y:F0} {step.ClickArea.Width:F0}x{step.ClickArea.Height:F0}";
+                    break;
+                case TargetMode.ColorClick:
+                    CurrentStepDetails.Text += " - Color target";
+                    break;
+                case TargetMode.MousePosition:
+                    CurrentStepDetails.Text += " - Current cursor position";
+                    break;
             }
 
             // Update next action

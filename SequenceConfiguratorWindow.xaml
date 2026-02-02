@@ -283,6 +283,7 @@
                                                       SelectedIndex="{Binding TargetMode, Converter={StaticResource TargetModeToIndexConverter}}">
                                                 <ComboBoxItem Content="Click Area"/>
                                                 <ComboBoxItem Content="Color Click"/>
+                                                <ComboBoxItem Content="Mouse position"/>
                                             </ComboBox>
                                         </Grid>
                                         
@@ -344,15 +345,12 @@
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 
                                                 <Label Grid.Column="0" Content="Click Area:" Foreground="White"/>
                                                 <Button Grid.Column="1" Content="Set Area" Width="80" Height="25"
                                                         Click="OnSetClickAreaClick" Tag="{Binding}"
                                                         Style="{StaticResource SetAreaButtonStyle}" Margin="0,0,10,0"/>
-                                                <CheckBox Grid.Column="2" Content="Use random position within area" Margin="0,0,0,0"
-                                                          IsChecked="{Binding UseRandomPosition, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
                                             </Grid>
                                             
                                             <!-- Area Display -->

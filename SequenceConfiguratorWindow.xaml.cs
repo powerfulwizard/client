@@ -35,7 +35,6 @@ namespace PowerfulWizard
                     Description = "Step 1",
                     DelayMs = 1000,
                     ClickType = ClickType.LeftClick,
-                    UseRandomPosition = false,
                     MovementSpeed = MovementSpeed.Medium,
                     CustomMovementDurationMs = 150
                 });
@@ -80,7 +79,6 @@ namespace PowerfulWizard
                 Description = $"Step {_currentSequence.Steps.Count + 1}",
                 DelayMs = 1000,
                 ClickType = ClickType.LeftClick,
-                UseRandomPosition = false,
                 MovementSpeed = MovementSpeed.Medium,
                 CustomMovementDurationMs = 150
             };
@@ -131,7 +129,6 @@ namespace PowerfulWizard
                 Description = "Step 1",
                 DelayMs = 1000,
                 ClickType = ClickType.LeftClick,
-                UseRandomPosition = false,
                 MovementSpeed = MovementSpeed.Medium,
                 CustomMovementDurationMs = 150
             });
@@ -145,7 +142,6 @@ namespace PowerfulWizard
                 if (clickAreaWindow.ShowDialog() == true)
                 {
                     step.ClickArea = clickAreaWindow.SelectedArea;
-                    step.UseRandomPosition = true;
                     RefreshAreaOverlay();
                 }
             }
@@ -376,7 +372,7 @@ namespace PowerfulWizard
         
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (value is int index)
+            if (value is int index && index >= 0 && index <= 2)
             {
                 return (TargetMode)index;
             }

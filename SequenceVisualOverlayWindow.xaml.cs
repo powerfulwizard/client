@@ -52,7 +52,7 @@ namespace PowerfulWizard
             for (int i = 0; i < _sequence.Steps.Count; i++)
             {
                 var step = _sequence.Steps[i];
-                if (step.UseRandomPosition)
+                if (step.TargetMode == TargetMode.ClickArea && step.ClickArea.Width > 0 && step.ClickArea.Height > 0)
                 {
                     CreateStepVisual(i, step);
                 }

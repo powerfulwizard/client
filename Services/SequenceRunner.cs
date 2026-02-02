@@ -237,6 +237,15 @@ namespace PowerfulWizard.Services
 
         private async Task ExecuteClickAsync(SequenceStep step)
         {
+            // Mouse position: click at current cursor position (no movement)
+            if (step.TargetMode == TargetMode.MousePosition)
+            {
+                GetCursorPos(out POINT currentPos);
+                PerformClick(step);
+                await HandleClickValidationAndRetryAsync(step);
+                return;
+            }
+
             // Determine click position
             Point clickPosition;
             
@@ -265,26 +274,20 @@ namespace PowerfulWizard.Services
                 // Always use smooth movement for color clicks
                 StartSmoothMovement(clickPosition, step);
             }
-            else if (step.UseRandomPosition)
+            else if (step.TargetMode == TargetMode.ClickArea)
             {
-                // Generate random position within the click area
+                // Click Area: random position within the click area
                 int x = _random.Next((int)step.ClickArea.X, (int)(step.ClickArea.X + step.ClickArea.Width));
                 int y = _random.Next((int)step.ClickArea.Y, (int)(step.ClickArea.Y + step.ClickArea.Height));
                 clickPosition = new Point(x, y);
-                
-                // Start smooth movement if using random position
                 StartSmoothMovement(clickPosition, step);
             }
             else
             {
-                // Use current cursor position
+                // Fallback: use current cursor position
                 GetCursorPos(out POINT currentPos);
                 clickPosition = new Point(currentPos.X, currentPos.Y);
-                
-                // Perform the click immediately at current position
                 PerformClick(step);
-                
-                // Validate click result and retry if needed
                 await HandleClickValidationAndRetryAsync(step);
             }
         }
@@ -801,7 +804,13 @@ namespace PowerfulWizard.Services
             {
                 Point newPosition;
                 
-                if (step.TargetMode == TargetMode.ColorClick)
+                if (step.TargetMode == TargetMode.MousePosition)
+                {
+                    // Do not move cursor at all - just retry the click in place (no SetCursorPos, no jitter)
+                    PerformClick(step);
+                    return;
+                }
+                else if (step.TargetMode == TargetMode.ColorClick)
                 {
                     var newColorPosition = ColorDetectionService.FindMatchingColors(
                         step.TargetColor, 
@@ -820,7 +829,7 @@ namespace PowerfulWizard.Services
                         newPosition = new Point(x, y);
                     }
                 }
-                else if (step.UseRandomPosition)
+                else if (step.TargetMode == TargetMode.ClickArea)
                 {
                     int x = _random.Next((int)step.ClickArea.X, (int)(step.ClickArea.X + step.ClickArea.Width));
                     int y = _random.Next((int)step.ClickArea.Y, (int)(step.ClickArea.Y + step.ClickArea.Height));
@@ -834,11 +843,10 @@ namespace PowerfulWizard.Services
                     );
                 }
                 
-                // Move to new position and click
+                // Move to new position and click (MousePosition already returned above - never moves cursor)
                 SetCursorPos((int)newPosition.X, (int)newPosition.Y);
                 await Task.Delay(100);
                 
-                // Perform the click
                 PerformClick(step);
             }
             catch (Exception ex)
