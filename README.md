@@ -1,4 +1,4 @@
-# Powerful Wizard Auto Clicker v2.7.0
+# Powerful Wizard Auto Clicker v2.7.1
 
 A powerful and feature-rich auto clicker with advanced sequence support, visual overlays, smooth mouse trails, and mouse recording capabilities for Windows.
 
@@ -96,11 +96,14 @@ Join our Discord server for support, updates, and community discussion: [Join Di
 - **Click-Through Design**: Overlays won't interfere with target applications
 - **Responsible Use**: Intended for automation, testing, and accessibility purposes
 
-## 🆕 Version 2.7.0 Highlights
+## 🆕 Version 2.7.1 Highlights
+- 🖱️ **Mouse Position target mode**: Click at the current cursor position — no movement, no jitter; ideal for click-at-cursor workflows (Auto Clicker and sequences)
 - ⌨️ **Better Hotkeys**: Use any mouse button (left, right, middle, side buttons) or keyboard key as start/stop hotkeys
 - 🎯 **Click-to-Set**: Click in the hotkey box, then press the key or mouse button you want — no typing required
-- ✨ **Simpler Hotkey Setup**: Clear "waiting for hotkey" indicator and improved UX
+- ✨ **Simpler Target Mode UI**: Single “Set Area” button (shown only when needed), dark theme for target mode controls, default mode is Mouse position
+- 👁️ **Click area overlay only when needed**: Overlay appears only when using Click Area target mode; no overlay on startup
 - 👁️ **Sequence Editor Overlay**: Fullscreen overlay shows where each step will click while editing sequences
+- 🧹 **Simpler options**: “Use Random position” removed; use Mouse position for click-at-cursor or Click Area for random-in-area
 
 ## Version 2.6.0 Highlights
 - 🎯 **Click Validation System**: Automatically detects failed clicks and retries immediately
