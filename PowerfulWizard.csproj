@@ -13,9 +13,9 @@
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
         <PublishSingleFile>true</PublishSingleFile>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-        <Version>2.7.1</Version>
-        <AssemblyVersion>2.7.1</AssemblyVersion>
-        <FileVersion>2.7.1</FileVersion>
+        <Version>2.7.2</Version>
+        <AssemblyVersion>2.7.2</AssemblyVersion>
+        <FileVersion>2.7.2</FileVersion>
         <Product>Powerful Wizard Auto Clicker</Product>
         <Copyright>Copyright © 2024</Copyright>
         <Description>Advanced auto-clicker with sequence support, custom areas, and mouse trails</Description>

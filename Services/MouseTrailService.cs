@@ -163,6 +163,7 @@ namespace PowerfulWizard.Services
                 Opacity = 1.0
             };
             
+            // Position is window-relative (0-based); parent window covers virtual screen
             Canvas.SetLeft(ellipse, position.X - ellipse.Width / 2);
             Canvas.SetTop(ellipse, position.Y - ellipse.Height / 2);
             

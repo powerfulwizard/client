@@ -366,28 +366,10 @@ namespace PowerfulWizard.Services
         
         private void MoveMouse(Point position)
         {
-            int screenWidth = GetSystemMetrics(0); // SM_CXSCREEN
-            int screenHeight = GetSystemMetrics(1); // SM_CYSCREEN
-            
-            // Calculate absolute coordinates (0-65535)
-            int absoluteX = (int)((position.X * 65535) / screenWidth);
-            int absoluteY = (int)((position.Y * 65535) / screenHeight);
-            
-            var input = new INPUT
-            {
-                type = INPUT_MOUSE,
-                mi = new MOUSEINPUT
-                {
-                    dx = absoluteX,
-                    dy = absoluteY,
-                    mouseData = 0,
-                    dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE,
-                    time = 0,
-                    dwExtraInfo = IntPtr.Zero
-                }
-            };
-            
-            SendInput(1, new[] { input }, Marshal.SizeOf(typeof(INPUT)));
+            // Use SetCursorPos with virtual screen coordinates directly. GetCursorPos/recorded positions
+            // are in virtual screen space; normalizing with SM_CXSCREEN/SM_CYSCREEN (primary only) for
+            // SendInput(MOUSEEVENTF_ABSOLUTE) would map secondary monitors incorrectly on multi-monitor.
+            SetCursorPos((int)Math.Round(position.X), (int)Math.Round(position.Y));
         }
         
         private void SimulateClick(uint flags)
@@ -419,18 +401,13 @@ namespace PowerfulWizard.Services
         [DllImport("user32.dll", SetLastError = true)]
         private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
         
-        [DllImport("user32.dll")]
-        private static extern int GetSystemMetrics(int nIndex);
-        
         private const int INPUT_MOUSE = 0;
-        private const int MOUSEEVENTF_MOVE = 0x0001;
         private const int MOUSEEVENTF_LEFTDOWN = 0x0002;
         private const int MOUSEEVENTF_LEFTUP = 0x0004;
         private const int MOUSEEVENTF_RIGHTDOWN = 0x0008;
         private const int MOUSEEVENTF_RIGHTUP = 0x0010;
         private const int MOUSEEVENTF_MIDDLEDOWN = 0x0020;
         private const int MOUSEEVENTF_MIDDLEUP = 0x0040;
-        private const int MOUSEEVENTF_ABSOLUTE = 0x8000;
         
         [StructLayout(LayoutKind.Sequential)]
         private struct INPUT

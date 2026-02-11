@@ -270,16 +270,17 @@ namespace PowerfulWizard.Services
                     int y = _random.Next((int)step.ColorSearchArea.Y, (int)(step.ColorSearchArea.Y + step.ColorSearchArea.Height));
                     clickPosition = new Point(x, y);
                 }
-                
+                // Convert WPF/DIP coords to physical for SetCursorPos (scaled/multi-monitor)
+                clickPosition = ScreenCoordinateHelper.DipToPhysical(clickPosition);
                 // Always use smooth movement for color clicks
                 StartSmoothMovement(clickPosition, step);
             }
             else if (step.TargetMode == TargetMode.ClickArea)
             {
-                // Click Area: random position within the click area
+                // Click Area: random position within the click area (stored in WPF DIPs; convert to physical)
                 int x = _random.Next((int)step.ClickArea.X, (int)(step.ClickArea.X + step.ClickArea.Width));
                 int y = _random.Next((int)step.ClickArea.Y, (int)(step.ClickArea.Y + step.ClickArea.Height));
-                clickPosition = new Point(x, y);
+                clickPosition = ScreenCoordinateHelper.DipToPhysical(new Point(x, y));
                 StartSmoothMovement(clickPosition, step);
             }
             else
@@ -828,12 +829,13 @@ namespace PowerfulWizard.Services
                         int y = _random.Next((int)step.ColorSearchArea.Y, (int)(step.ColorSearchArea.Y + step.ColorSearchArea.Height));
                         newPosition = new Point(x, y);
                     }
+                    newPosition = ScreenCoordinateHelper.DipToPhysical(newPosition);
                 }
                 else if (step.TargetMode == TargetMode.ClickArea)
                 {
                     int x = _random.Next((int)step.ClickArea.X, (int)(step.ClickArea.X + step.ClickArea.Width));
                     int y = _random.Next((int)step.ClickArea.Y, (int)(step.ClickArea.Y + step.ClickArea.Height));
-                    newPosition = new Point(x, y);
+                    newPosition = ScreenCoordinateHelper.DipToPhysical(new Point(x, y));
                 }
                 else
                 {
@@ -844,7 +846,7 @@ namespace PowerfulWizard.Services
                 }
                 
                 // Move to new position and click (MousePosition already returned above - never moves cursor)
-                SetCursorPos((int)newPosition.X, (int)newPosition.Y);
+                SetCursorPos((int)Math.Round(newPosition.X), (int)Math.Round(newPosition.Y));
                 await Task.Delay(100);
                 
                 PerformClick(step);

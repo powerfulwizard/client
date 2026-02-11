@@ -8,7 +8,7 @@
         Topmost="True"
         ShowInTaskbar="False"
         ResizeMode="NoResize"
-        WindowState="Maximized"
+        WindowState="Normal"
         IsHitTestVisible="False">
     
     <Canvas x:Name="TrailCanvas" Background="Transparent"/>

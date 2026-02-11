@@ -57,6 +57,13 @@ namespace PowerfulWizard
         
         private void OnWindowLoaded(object? sender, RoutedEventArgs e)
         {
+            // Cover the full virtual screen (all monitors) so trail coordinates from GetCursorPos match.
+            // GetCursorPos returns virtual screen coords; a primary-only maximized window would show offset trails on multi-monitor.
+            Left = SystemParameters.VirtualScreenLeft;
+            Top = SystemParameters.VirtualScreenTop;
+            Width = SystemParameters.VirtualScreenWidth;
+            Height = SystemParameters.VirtualScreenHeight;
+
             // Make window click-through by setting extended window styles
             var hwnd = new WindowInteropHelper(this).Handle;
             var extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
@@ -67,8 +74,11 @@ namespace PowerfulWizard
         {
             if (GetCursorPos(out POINT point))
             {
-                var screenPosition = new Point(point.X, point.Y);
-                _mouseTrailService.AddTrailPoint(screenPosition);
+                // Convert virtual screen coords to window-relative (window covers virtual screen with possible non-zero origin)
+                var windowRelative = new Point(
+                    point.X - SystemParameters.VirtualScreenLeft,
+                    point.Y - SystemParameters.VirtualScreenTop);
+                _mouseTrailService.AddTrailPoint(windowRelative);
             }
         }
         
@@ -77,9 +87,13 @@ namespace PowerfulWizard
             _mouseTrailService.LoadSettings();
         }
         
-        public void CreateBurstEffect(Point position)
+        public void CreateBurstEffect(Point screenPosition)
         {
-            _mouseTrailService.CreateBurstEffect(position);
+            // Convert virtual screen coords to window-relative for correct placement on multi-monitor
+            var windowRelative = new Point(
+                screenPosition.X - SystemParameters.VirtualScreenLeft,
+                screenPosition.Y - SystemParameters.VirtualScreenTop);
+            _mouseTrailService.CreateBurstEffect(windowRelative);
         }
         
         protected override void OnClosed(EventArgs e)

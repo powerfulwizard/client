@@ -1,4 +1,5 @@
 using System.Configuration;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -292,6 +293,10 @@ namespace PowerfulWizard
 
         private void OnWindowLoaded(object sender, RoutedEventArgs e)
         {
+            // Show version in title
+            var version = Assembly.GetExecutingAssembly().GetName().Version;
+            Title = version != null ? $"Powerful Wizard v{version.ToString(3)}" : "Powerful Wizard";
+
             // Initialize UI elements after XAML is fully loaded
             ClickTypeComboBox.SelectedIndex = (int)currentClickType;
             
@@ -1124,11 +1129,11 @@ namespace PowerfulWizard
             }
             else if (TargetModeComboBox.SelectedIndex == 1 && clickArea.Width > 0 && clickArea.Height > 0)
             {
-                // Click Area: random position within click area
-                targetPosition = new Point(
+                // Click Area: random position within click area (stored in WPF DIPs; convert to physical for SetCursorPos)
+                targetPosition = PowerfulWizard.Services.ScreenCoordinateHelper.DipToPhysical(new Point(
                     clickArea.X + random.NextDouble() * clickArea.Width,
                     clickArea.Y + random.NextDouble() * clickArea.Height
-                );
+                ));
             }
             else
             {
@@ -1139,6 +1144,12 @@ namespace PowerfulWizard
                 StopButton.IsEnabled = false;
                 StatusLabel.Content = "Status: Paused - No valid target area";
                 return;
+            }
+
+            // Color Click targets also come from WPF/DIPs (search area or cached target) - convert to physical
+            if (TargetModeComboBox.SelectedIndex == 2)
+            {
+                targetPosition = PowerfulWizard.Services.ScreenCoordinateHelper.DipToPhysical(targetPosition);
             }
 
             // Simpler, more natural control point generation

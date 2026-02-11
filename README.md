@@ -1,4 +1,4 @@
-# Powerful Wizard Auto Clicker v2.7.1
+# Powerful Wizard Auto Clicker v2.7.2
 
 A powerful and feature-rich auto clicker with advanced sequence support, visual overlays, smooth mouse trails, and mouse recording capabilities for Windows.
 
@@ -96,7 +96,14 @@ Join our Discord server for support, updates, and community discussion: [Join Di
 - **Click-Through Design**: Overlays won't interfere with target applications
 - **Responsible Use**: Intended for automation, testing, and accessibility purposes
 
-## 🆕 Version 2.7.1 Highlights
+## 🆕 Version 2.7.2 Highlights
+- 🖱️ **Multi-monitor & DPI fix**: Cursor now moves and clicks correctly inside the drawn click area on multi-monitor and scaled displays (trail and cursor no longer offset)
+- 📐 **Coordinate conversion**: Click area and color targets (WPF coordinates) are converted to physical screen coordinates before moving the cursor, so clicks land where you set them
+- 🌐 **Trail on all monitors**: Mouse trail overlay covers the full virtual screen so the trail appears in the right place on every monitor
+- 🎯 **Recording playback on multi-monitor**: Playback uses physical coordinates so recorded movements replay correctly on any setup
+- 📌 **Version in window title**: Main window title shows the app version (e.g. "Powerful Wizard v2.7.2")
+
+## Version 2.7.1 Highlights
 - 🖱️ **Mouse Position target mode**: Click at the current cursor position — no movement, no jitter; ideal for click-at-cursor workflows (Auto Clicker and sequences)
 - ⌨️ **Better Hotkeys**: Use any mouse button (left, right, middle, side buttons) or keyboard key as start/stop hotkeys
 - 🎯 **Click-to-Set**: Click in the hotkey box, then press the key or mouse button you want — no typing required
