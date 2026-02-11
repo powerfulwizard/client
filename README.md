@@ -11,10 +11,10 @@ Join our Discord server for support, updates, and community discussion: [Join Di
 ## Screenshots
 
 ### Main Interface
-![Main Window](images/PowerfulWizardMainWindowv2.0.0.png)
+![Main Window](images/PowerfulWizardClientv2.7.2.png)
 
 ### Sequence Configurator
-![Sequence Configurator](images/PowerfulWizardSequenceConfigv2.0.0.png)
+![Sequence Configurator](images/PowerfulWizardSequenceConfigv2.7.2.png)
 
 ## 🚀 Key Features
 
