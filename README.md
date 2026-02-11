@@ -1,4 +1,5 @@
 # Powerful Wizard Auto Clicker v2.7.2
+![GitHub Release](https://img.shields.io/github/v/release/powerfulwizard/client?label=Version&color=mediumpurple) ![Downloads](https://img.shields.io/github/downloads/powerfulwizard/client/total?label=Downloads&color=mediumpurple) 
 
 A powerful and feature-rich auto clicker with advanced sequence support, visual overlays, smooth mouse trails, and mouse recording capabilities for Windows.
 
