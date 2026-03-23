@@ -175,6 +175,8 @@
                 <ColumnDefinition Width="200"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             
             <TextBlock Grid.Column="0" Text="Sequence Name:" Foreground="White" 
@@ -194,6 +196,21 @@
                 <TextBox x:Name="LoopCountTextBox" Width="60" Margin="10,0,0,0" 
                          Text="{Binding LoopCount, UpdateSourceTrigger=PropertyChanged}"
                          Visibility="{Binding LoopMode, Converter={StaticResource IsLoopCountVisibleConverter}}"/>
+            </StackPanel>
+
+            <!-- Run Time Limit -->
+            <CheckBox Grid.Column="4" Content="Limit run time" Foreground="White" VerticalAlignment="Center" 
+                      IsChecked="{Binding RunTimeLimitEnabled, UpdateSourceTrigger=PropertyChanged}" Margin="15,0,5,0"/>
+            <StackPanel Grid.Column="5" Orientation="Horizontal" Visibility="{Binding RunTimeLimitEnabled, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TextBox x:Name="RunTimeValueTextBox" Width="50" Text="1" TextChanged="OnRunTimeInputChanged"
+                         Background="#2D2D30" Foreground="White" BorderBrush="#3F3F46"/>
+                <ComboBox x:Name="RunTimeUnitComboBox" Width="80" Margin="5,0,0,0" SelectedIndex="1"
+                          Background="#2D2D30" Foreground="White" BorderBrush="#3F3F46"
+                          SelectionChanged="OnRunTimeUnitChanged">
+                    <ComboBoxItem Content="Seconds"/>
+                    <ComboBoxItem Content="Minutes"/>
+                    <ComboBoxItem Content="Hours"/>
+                </ComboBox>
             </StackPanel>
             </Grid>
         </Grid>

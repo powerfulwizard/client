@@ -157,6 +157,8 @@ namespace PowerfulWizard.Models
         private LoopMode _loopMode;
         private int _loopCount;
         private bool _isRunning;
+        private bool _runTimeLimitEnabled;
+        private int _runTimeSeconds = 60;
 
         public string Name
         {
@@ -186,6 +188,18 @@ namespace PowerfulWizard.Models
         {
             get => _isRunning;
             set => SetProperty(ref _isRunning, value);
+        }
+
+        public bool RunTimeLimitEnabled
+        {
+            get => _runTimeLimitEnabled;
+            set => SetProperty(ref _runTimeLimitEnabled, value);
+        }
+
+        public int RunTimeSeconds
+        {
+            get => _runTimeSeconds;
+            set => SetProperty(ref _runTimeSeconds, value);
         }
 
         public Sequence()

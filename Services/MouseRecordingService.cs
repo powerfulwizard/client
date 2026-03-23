@@ -13,6 +13,8 @@ namespace PowerfulWizard.Services
         private bool _isPlaying;
         private DateTime _recordingStartTime;
         private DateTime _playbackStartTime;
+        private DateTime _playbackWallClockStart;
+        private int? _maxRunTimeSeconds;
         private int _currentActionIndex;
         private MouseRecording? _completedRecording;
         private MouseRecording? _currentRecordingSession;
@@ -117,7 +119,7 @@ namespace PowerfulWizard.Services
             RecordingStopped?.Invoke(this, EventArgs.Empty);
         }
         
-        public void StartPlayback(MouseRecording recording, double speedMultiplier = 1.0)
+        public void StartPlayback(MouseRecording recording, double speedMultiplier = 1.0, int? maxRunTimeSeconds = null)
         {
             if (_isRecording || _isPlaying || recording.Actions.Count == 0) 
             {
@@ -127,6 +129,8 @@ namespace PowerfulWizard.Services
             _isPlaying = true;
             _currentActionIndex = 0;
             _playbackStartTime = DateTime.Now;
+            _playbackWallClockStart = DateTime.UtcNow;
+            _maxRunTimeSeconds = maxRunTimeSeconds >= 1 ? maxRunTimeSeconds : null;
             
             // Set the recording session for playback
             _currentRecordingSession = recording;
@@ -288,6 +292,16 @@ namespace PowerfulWizard.Services
         private void OnPlaybackTimerTick(object? sender, EventArgs e)
         {
             if (!_isPlaying || _currentRecordingSession == null) return;
+            
+            if (_maxRunTimeSeconds.HasValue)
+            {
+                var elapsedSeconds = (DateTime.UtcNow - _playbackWallClockStart).TotalSeconds;
+                if (elapsedSeconds >= _maxRunTimeSeconds.Value)
+                {
+                    StopPlayback();
+                    return;
+                }
+            }
             
             var currentTime = (long)(DateTime.Now - _playbackStartTime).TotalMilliseconds;
             var actions = _currentRecordingSession.Actions;

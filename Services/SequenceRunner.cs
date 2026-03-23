@@ -14,6 +14,8 @@ namespace PowerfulWizard.Services
         private DispatcherTimer _sequenceTimer;
         private DispatcherTimer _movementTimer;
         private DispatcherTimer _countdownTimer;
+        private DispatcherTimer _runLimitTimer;
+        private DateTime _sequenceRunStartUtc;
         private readonly Random _random = Random.Shared;
         private Sequence? _currentSequence;
         private int _currentStepIndex = 0;
@@ -104,6 +106,10 @@ namespace PowerfulWizard.Services
             _countdownTimer = new DispatcherTimer();
             _countdownTimer.Interval = TimeSpan.FromMilliseconds(50); // Update every 50ms
             _countdownTimer.Tick += OnCountdownTimerTick;
+
+            _runLimitTimer = new DispatcherTimer();
+            _runLimitTimer.Interval = TimeSpan.FromMilliseconds(500);
+            _runLimitTimer.Tick += OnRunLimitTimerTick;
         }
 
         public bool IsRunning => _isRunning;
@@ -119,9 +125,17 @@ namespace PowerfulWizard.Services
             _currentStepIndex = 0;
             _currentLoop = 0;
             _isRunning = true;
+            _sequenceRunStartUtc = DateTime.UtcNow;
 
             // Show the visual overlay
             ShowOverlay();
+
+            // Start run limit timer when enabled
+            _runLimitTimer.Stop();
+            if (_currentSequence.RunTimeLimitEnabled && _currentSequence.RunTimeSeconds >= 1)
+            {
+                _runLimitTimer.Start();
+            }
 
             // Calculate total loops
             switch (_currentSequence.LoopMode)
@@ -146,6 +160,7 @@ namespace PowerfulWizard.Services
             _sequenceTimer.Stop();
             _movementTimer.Stop();
             _countdownTimer.Stop();
+            _runLimitTimer.Stop();
             _currentSequence = null!;
             
             // Hide the visual overlay
@@ -904,6 +919,42 @@ namespace PowerfulWizard.Services
             }
         }
 
+        private void OnRunLimitTimerTick(object? sender, EventArgs e)
+        {
+            if (!_isRunning || _currentSequence == null) return;
+            if (!_currentSequence.RunTimeLimitEnabled || _currentSequence.RunTimeSeconds < 1) return;
+
+            var elapsedSeconds = (DateTime.UtcNow - _sequenceRunStartUtc).TotalSeconds;
+            if (elapsedSeconds >= _currentSequence.RunTimeSeconds)
+            {
+                StopSequenceDueToTimeLimit();
+            }
+        }
+
+        private void StopSequenceDueToTimeLimit()
+        {
+            _runLimitTimer.Stop();
+            _isRunning = false;
+            _sequenceTimer.Stop();
+            _movementTimer.Stop();
+            _countdownTimer.Stop();
+
+            var seq = _currentSequence;
+            _currentSequence = null!;
+            HideOverlay();
+
+            if (seq != null)
+            {
+                SequenceCompleted?.Invoke(this, new SequenceCompletedEventArgs
+                {
+                    Sequence = seq,
+                    TotalLoops = _currentLoop,
+                    TotalSteps = seq.Steps.Count * _currentLoop,
+                    StoppedDueToTimeLimit = true
+                });
+            }
+        }
+
         private void CompleteLoop()
         {
             _currentLoop++;
@@ -939,6 +990,7 @@ namespace PowerfulWizard.Services
                 _isRunning = false;
                 _sequenceTimer.Stop();
                 _countdownTimer.Stop();
+                _runLimitTimer.Stop();
                 
                 // Hide the overlay
                 HideOverlay();
@@ -949,7 +1001,8 @@ namespace PowerfulWizard.Services
                     {
                         Sequence = _currentSequence,
                         TotalLoops = _currentLoop,
-                        TotalSteps = _currentSequence.Steps.Count * _currentLoop
+                        TotalSteps = _currentSequence.Steps.Count * _currentLoop,
+                        StoppedDueToTimeLimit = false
                     });
                 }
                 
@@ -987,6 +1040,7 @@ namespace PowerfulWizard.Services
         public Sequence Sequence { get; set; } = null!;
         public int TotalLoops { get; set; }
         public int TotalSteps { get; set; }
+        public bool StoppedDueToTimeLimit { get; set; }
     }
 
     public class SequenceStepEventArgs : EventArgs

@@ -274,7 +274,7 @@
                         </Grid.ColumnDefinitions>
                         
                         <Label Grid.Column="0" Content="Target Mode:" Foreground="#FFFFFF" VerticalAlignment="Center"/>
-                        <ComboBox Grid.Column="1" x:Name="TargetModeComboBox" Margin="10,0,10,0" 
+                        <ComboBox Grid.Column="1" x:Name="TargetModeComboBox" Margin="10,0,0,0" 
                                   SelectionChanged="OnTargetModeChanged">
                             <ComboBox.Style>
                                 <Style TargetType="ComboBox">
@@ -351,31 +351,113 @@
                             Grid.ColumnSpan="2" Margin="0,0,0,10" IsEnabled="False" Click="OnSetAreaClick" 
                             Style="{StaticResource DarkButtonStyle}" Visibility="Collapsed"/>
                     
-
+                    <CheckBox x:Name="AutoClickRunTimeLimitCheckBox" Content="Limit run time" Grid.Row="7" Grid.Column="0" 
+                              Foreground="#FFFFFF" Margin="0,0,0,10" IsChecked="False"/>
+                    <Grid Grid.Row="7" Grid.Column="1" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="AutoClickRunTimeValueInput" Text="1" Width="50" Grid.Column="0"
+                                 PreviewTextInput="OnPreviewTextInput" TextChanged="OnTextChanged"
+                                 Background="#333333" Foreground="#FFFFFF"/>
+                        <ComboBox x:Name="AutoClickRunTimeUnitComboBox" Grid.Column="1" MinHeight="28" Margin="5,0,0,0"
+                                  HorizontalAlignment="Stretch"
+                                  Background="#333333" Foreground="#FFFFFF" BorderBrush="#555555"
+                                  SelectedIndex="1">
+                            <ComboBox.Style>
+                                <Style TargetType="ComboBox">
+                                    <Setter Property="Background" Value="#333333"/>
+                                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                                    <Setter Property="BorderBrush" Value="#555555"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ComboBox">
+                                                <Grid>
+                                                    <ToggleButton Name="ToggleButton" Background="#333333" BorderBrush="#555555" 
+                                                                  Foreground="#FFFFFF" BorderThickness="1" Padding="6,4"
+                                                                  IsChecked="{Binding Path=IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                                                  ClickMode="Press">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition />
+                                                                <ColumnDefinition Width="20" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <ContentPresenter Name="ContentSite" IsHitTestVisible="False" 
+                                                                              Content="{TemplateBinding SelectionBoxItem}"
+                                                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                                              Margin="4,2,24,2" VerticalAlignment="Center" 
+                                                                              HorizontalAlignment="Left" />
+                                                            <TextBlock Grid.Column="1" Text="▼" HorizontalAlignment="Center" 
+                                                                       VerticalAlignment="Center" Foreground="#FFFFFF"/>
+                                                        </Grid>
+                                                    </ToggleButton>
+                                                    <Popup Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" 
+                                                           AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
+                                                        <Grid Name="DropDown" SnapsToDevicePixels="True" 
+                                                              MinWidth="{TemplateBinding ActualWidth}" MaxHeight="200">
+                                                            <Border Background="#333333" BorderThickness="1" BorderBrush="#555555"/>
+                                                            <ScrollViewer Margin="4,6,4,6" SnapsToDevicePixels="True">
+                                                                <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
+                                                            </ScrollViewer>
+                                                        </Grid>
+                                                    </Popup>
+                                                </Grid>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ComboBox.Style>
+                            <ComboBox.Resources>
+                                <Style TargetType="ComboBoxItem">
+                                    <Setter Property="Background" Value="#333333"/>
+                                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                                    <Setter Property="BorderBrush" Value="#555555"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsHighlighted" Value="True">
+                                            <Setter Property="Background" Value="#555555"/>
+                                            <Setter Property="Foreground" Value="#FFFFFF"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="#444444"/>
+                                            <Setter Property="Foreground" Value="#FFFFFF"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ComboBox.Resources>
+                            <ComboBoxItem Content="Seconds"/>
+                            <ComboBoxItem Content="Minutes"/>
+                            <ComboBoxItem Content="Hours"/>
+                        </ComboBox>
+                    </Grid>
                     
-                    <Label x:Name="StartHotkeyLabel" Content="Hotkey: Ctrl+Shift+S" Grid.Row="7" Grid.Column="0" 
+                    <Label x:Name="StartHotkeyLabel" Content="Hotkey: Ctrl+Shift+S" Grid.Row="8" Grid.Column="0" 
                            Margin="0,0,5,0" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
-                    <Label x:Name="StopHotkeyLabel" Content="Hotkey: Ctrl+Shift+P" Grid.Row="7" Grid.Column="1" 
+                    <Label x:Name="StopHotkeyLabel" Content="Hotkey: Ctrl+Shift+P" Grid.Row="8" Grid.Column="1" 
                            Margin="5,0,0,0" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
                     
-                    <Button x:Name="StartButton" Content="Start" Grid.Row="8" Grid.Column="0" Width="162" Height="100" 
+                    <Button x:Name="StartButton" Content="Start" Grid.Row="9" Grid.Column="0" Width="162" Height="100" 
                             Margin="0,0,5,10" Click="OnStartButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
-                    <Button x:Name="StopButton" Content="Stop" Grid.Row="8" Grid.Column="1" Width="162" Height="100" 
+                    <Button x:Name="StopButton" Content="Stop" Grid.Row="9" Grid.Column="1" Width="162" Height="100" 
                             Margin="5,0,0,10" Click="OnStopButtonClick" IsEnabled="False" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
                     
-                    <Label x:Name="StatusLabel" Content="Status: Stopped" Grid.Row="9" Grid.Column="0" 
+                    <Label x:Name="StatusLabel" Content="Status: Stopped" Grid.Row="10" Grid.Column="0" 
                            Grid.ColumnSpan="2" Margin="0,0,0,10" Foreground="#FFFFFF"/>
                     
-                    <Label x:Name="NextClickLabel" Content="Next Click: -- ms" Grid.Row="10" Grid.Column="0" 
+                    <Label x:Name="NextClickLabel" Content="Next Click: -- ms" Grid.Row="11" Grid.Column="0" 
                            Grid.ColumnSpan="2" Margin="0,0,0,10" Foreground="#FFFFFF"/>
                     
-                    <Grid Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,10">
+                    <Label x:Name="TimeRemainingLabel" Content="Time remaining: --" Grid.Row="12" Grid.Column="0" 
+                           Grid.ColumnSpan="2" Margin="0,0,0,10" Foreground="#FFFFFF"/>
+                    
+                    <Grid Grid.Row="13" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <Label x:Name="MovementSpeedLabel" Content="Movement Speed: -- ms" Grid.Column="0" 
+                        <Label x:Name="MovementSpeedLabel" Content="Movement Speed: -- ms" Grid.Column="0"  
                                Margin="0,0,5,0" Foreground="#FFFFFF"/>
                         <Button x:Name="SequenceButton" Content="Sequences" Grid.Column="1" Width="80" Height="40" 
                                 Margin="5,0,0,0" Click="OnSequenceButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
@@ -389,6 +471,7 @@
             <TabItem Header="Recording">
                 <Grid Margin="10">
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -471,21 +554,102 @@
                         <ComboBoxItem Content="2.0x"/>
                     </ComboBox>
                     
-                    <Label Content="Recording Status:" Grid.Row="1" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
-                    <Label x:Name="RecordingStatusLabel" Content="Ready to Record" Grid.Row="1" Grid.Column="1" 
+                    <CheckBox x:Name="RecordingRunTimeLimitCheckBox" Content="Limit run time" Grid.Row="1" Grid.Column="0" 
+                              Foreground="#FFFFFF" Margin="0,0,0,10" IsChecked="False"/>
+                    <Grid Grid.Row="1" Grid.Column="1" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="RecordingRunTimeValueInput" Text="1" Width="50" Grid.Column="0"
+                                 PreviewTextInput="OnPreviewTextInput" TextChanged="OnTextChanged"
+                                 Background="#333333" Foreground="#FFFFFF"/>
+                        <ComboBox x:Name="RecordingRunTimeUnitComboBox" Grid.Column="1" MinHeight="28" Margin="5,0,0,0"
+                                  HorizontalAlignment="Stretch"
+                                  Background="#333333" Foreground="#FFFFFF" BorderBrush="#555555"
+                                  SelectedIndex="1">
+                            <ComboBox.Style>
+                                <Style TargetType="ComboBox">
+                                    <Setter Property="Background" Value="#333333"/>
+                                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                                    <Setter Property="BorderBrush" Value="#555555"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ComboBox">
+                                                <Grid>
+                                                    <ToggleButton Name="ToggleButton" Background="#333333" BorderBrush="#555555" 
+                                                                  Foreground="#FFFFFF" BorderThickness="1" Padding="6,4"
+                                                                  IsChecked="{Binding Path=IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                                                  ClickMode="Press">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition />
+                                                                <ColumnDefinition Width="20" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <ContentPresenter Name="ContentSite" IsHitTestVisible="False" 
+                                                                              Content="{TemplateBinding SelectionBoxItem}"
+                                                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                                              Margin="4,2,24,2" VerticalAlignment="Center" 
+                                                                              HorizontalAlignment="Left" />
+                                                            <TextBlock Grid.Column="1" Text="▼" HorizontalAlignment="Center" 
+                                                                       VerticalAlignment="Center" Foreground="#FFFFFF"/>
+                                                        </Grid>
+                                                    </ToggleButton>
+                                                    <Popup Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" 
+                                                           AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
+                                                        <Grid Name="DropDown" SnapsToDevicePixels="True" 
+                                                              MinWidth="{TemplateBinding ActualWidth}" MaxHeight="200">
+                                                            <Border Background="#333333" BorderThickness="1" BorderBrush="#555555"/>
+                                                            <ScrollViewer Margin="4,6,4,6" SnapsToDevicePixels="True">
+                                                                <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
+                                                            </ScrollViewer>
+                                                        </Grid>
+                                                    </Popup>
+                                                </Grid>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ComboBox.Style>
+                            <ComboBox.Resources>
+                                <Style TargetType="ComboBoxItem">
+                                    <Setter Property="Background" Value="#333333"/>
+                                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                                    <Setter Property="BorderBrush" Value="#555555"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsHighlighted" Value="True">
+                                            <Setter Property="Background" Value="#555555"/>
+                                            <Setter Property="Foreground" Value="#FFFFFF"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="#444444"/>
+                                            <Setter Property="Foreground" Value="#FFFFFF"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ComboBox.Resources>
+                            <ComboBoxItem Content="Seconds"/>
+                            <ComboBoxItem Content="Minutes"/>
+                            <ComboBoxItem Content="Hours"/>
+                        </ComboBox>
+                    </Grid>
+                    
+                    <Label Content="Recording Status:" Grid.Row="2" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
+                    <Label x:Name="RecordingStatusLabel" Content="Ready to Record" Grid.Row="2" Grid.Column="1" 
                            Margin="0,0,0,10" Foreground="#FFFFFF"/>
                     
-                    <Label Content="Recording Info:" Grid.Row="2" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
-                    <Label x:Name="RecordingInfoLabel" Content="No recording loaded" Grid.Row="2" Grid.Column="1" 
+                    <Label Content="Recording Info:" Grid.Row="3" Grid.Column="0" Margin="0,0,5,10" Foreground="#FFFFFF"/>
+                    <Label x:Name="RecordingInfoLabel" Content="No recording loaded" Grid.Row="3" Grid.Column="1" 
                            Margin="0,0,0,10" Foreground="#FFFFFF"/>
                     
                     <!-- Recording Buttons -->
-                    <Button x:Name="RecordButton" Content="Start Recording" Grid.Row="3" Grid.Column="0" Width="162" Height="80" 
+                    <Button x:Name="RecordButton" Content="Start Recording" Grid.Row="4" Grid.Column="0" Width="162" Height="80" 
                             Margin="0,0,5,10" Click="OnRecordButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand"/>
-                    <Button x:Name="PlayButton" Content="Play Recording" Grid.Row="3" Grid.Column="1" Width="162" Height="80" 
+                    <Button x:Name="PlayButton" Content="Play Recording" Grid.Row="4" Grid.Column="1" Width="162" Height="80" 
                             Margin="5,0,0,10" Click="OnPlayButtonClick" Background="#333333" Foreground="#FFFFFF" Cursor="Hand" IsEnabled="False"/>
                     
-                    <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" 
+                    <TextBlock Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" 
                                Text="Note: Hold and drag currently not supported" 
                                HorizontalAlignment="Center" Foreground="#CCCCCC" FontSize="10" 
                                TextAlignment="Center" Margin="20,5"/>

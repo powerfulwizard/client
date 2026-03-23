@@ -50,6 +50,7 @@ namespace PowerfulWizard
 
         private void OnConfiguratorLoaded(object sender, RoutedEventArgs e)
         {
+            SyncRunTimeInputsFromSequence();
             _areaOverlay = new ConfiguratorAreaOverlayWindow { Owner = this };
             _areaOverlay.Show();
             _areaOverlay.RefreshFromSequence(_currentSequence);
@@ -71,6 +72,40 @@ namespace PowerfulWizard
         {
             _areaOverlay?.RefreshFromSequence(_currentSequence);
         }
+
+        private static int GetUnitMultiplier(int unitIndex) => unitIndex switch { 0 => 1, 1 => 60, 2 => 3600, _ => 60 };
+
+        private void SyncRunTimeInputsFromSequence()
+        {
+            var total = Math.Max(0, _currentSequence.RunTimeSeconds);
+            if (total >= 3600 && total % 3600 == 0)
+            {
+                RunTimeValueTextBox.Text = (total / 3600).ToString();
+                RunTimeUnitComboBox.SelectedIndex = 2;
+            }
+            else if (total >= 60 && total % 60 == 0)
+            {
+                RunTimeValueTextBox.Text = (total / 60).ToString();
+                RunTimeUnitComboBox.SelectedIndex = 1;
+            }
+            else
+            {
+                RunTimeValueTextBox.Text = total.ToString();
+                RunTimeUnitComboBox.SelectedIndex = 0;
+            }
+        }
+
+        private void SyncRunTimeToSequenceFromInputs()
+        {
+            if (!int.TryParse(RunTimeValueTextBox.Text, out int value) || value < 0) return;
+            var idx = RunTimeUnitComboBox.SelectedIndex;
+            if (idx < 0) idx = 1;
+            _currentSequence.RunTimeSeconds = value * GetUnitMultiplier(idx);
+        }
+
+        private void OnRunTimeInputChanged(object sender, TextChangedEventArgs e) => SyncRunTimeToSequenceFromInputs();
+
+        private void OnRunTimeUnitChanged(object sender, SelectionChangedEventArgs e) => SyncRunTimeToSequenceFromInputs();
         
         private void OnAddStepClick(object sender, RoutedEventArgs e)
         {
@@ -246,6 +281,9 @@ namespace PowerfulWizard
                     _currentSequence.Name = loadedSequence.Name;
                     _currentSequence.LoopMode = loadedSequence.LoopMode;
                     _currentSequence.LoopCount = loadedSequence.LoopCount;
+                    _currentSequence.RunTimeLimitEnabled = loadedSequence.RunTimeLimitEnabled;
+                    _currentSequence.RunTimeSeconds = loadedSequence.RunTimeSeconds;
+                    SyncRunTimeInputsFromSequence();
                     _currentSequence.Steps.Clear();
                     foreach (var step in loadedSequence.Steps)
                     {

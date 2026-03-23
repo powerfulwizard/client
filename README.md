@@ -1,4 +1,4 @@
-# Powerful Wizard Auto Clicker v2.7.2
+# Powerful Wizard Auto Clicker v2.7.3
 ![GitHub Release](https://img.shields.io/github/v/release/powerfulwizard/client?label=Version&color=mediumpurple) ![Downloads](https://img.shields.io/github/downloads/powerfulwizard/client/total?label=Downloads&color=mediumpurple) 
 
 A powerful and feature-rich auto clicker with advanced sequence support, visual overlays, smooth mouse trails, and mouse recording capabilities for Windows.
@@ -97,12 +97,17 @@ Join our Discord server for support, updates, and community discussion: [Join Di
 - **Click-Through Design**: Overlays won't interfere with target applications
 - **Responsible Use**: Intended for automation, testing, and accessibility purposes
 
-## 🆕 Version 2.7.2 Highlights
+## 🆕 Version 2.7.3 Highlights
+- ⏱️ **Run Time Limit**: Configure max duration before auto-stop for auto-clicking, recording playback, and sequences
+- 🕐 **Value + unit selector**: Set run time with a number and dropdown (seconds, minutes, or hours)
+- 📊 **Time Remaining Counter**: Live countdown showing seconds left until auto-stop in the main stats area
+
+## Version 2.7.2 Highlights
 - 🖱️ **Multi-monitor & DPI fix**: Cursor now moves and clicks correctly inside the drawn click area on multi-monitor and scaled displays (trail and cursor no longer offset)
 - 📐 **Coordinate conversion**: Click area and color targets (WPF coordinates) are converted to physical screen coordinates before moving the cursor, so clicks land where you set them
 - 🌐 **Trail on all monitors**: Mouse trail overlay covers the full virtual screen so the trail appears in the right place on every monitor
 - 🎯 **Recording playback on multi-monitor**: Playback uses physical coordinates so recorded movements replay correctly on any setup
-- 📌 **Version in window title**: Main window title shows the app version (e.g. "Powerful Wizard v2.7.2")
+- 📌 **Version in window title**: Main window title shows the app version
 
 ## Version 2.7.1 Highlights
 - 🖱️ **Mouse Position target mode**: Click at the current cursor position — no movement, no jitter; ideal for click-at-cursor workflows (Auto Clicker and sequences)

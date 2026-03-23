@@ -82,6 +82,46 @@ namespace PowerfulWizard
         private DateTime _lastSameHotkeyToggleUtc = DateTime.MinValue;
         private const int SAME_HOTKEY_DEBOUNCE_MS = 400;
 
+        private DateTime _autoClickRunStartUtc;
+        private DateTime _sequenceRunStartUtc;
+        private int _sequenceRunLimitSeconds;
+        private DispatcherTimer? _timeRemainingTimer;
+
+        private static int GetUnitMultiplier(int unitIndex) => unitIndex switch { 0 => 1, 1 => 60, 2 => 3600, _ => 60 };
+
+        private int GetAutoClickRunTimeTotalSeconds() =>
+            GetRunTimeTotalSeconds(AutoClickRunTimeValueInput?.Text, AutoClickRunTimeUnitComboBox?.SelectedIndex ?? 1);
+
+        private int GetRecordingRunTimeTotalSeconds() =>
+            GetRunTimeTotalSeconds(RecordingRunTimeValueInput?.Text, RecordingRunTimeUnitComboBox?.SelectedIndex ?? 1);
+
+        private static int GetRunTimeTotalSeconds(string? valueText, int unitIndex)
+        {
+            if (!int.TryParse(valueText, out int value) || value < 0) return 0;
+            return value * GetUnitMultiplier(unitIndex);
+        }
+
+        private static void SetRunTimeInputs(TextBox? valueBox, ComboBox? unitCombo, int totalSeconds)
+        {
+            if (valueBox == null || unitCombo == null) return;
+            totalSeconds = Math.Max(0, totalSeconds);
+            if (totalSeconds >= 3600 && totalSeconds % 3600 == 0)
+            {
+                valueBox.Text = (totalSeconds / 3600).ToString();
+                unitCombo.SelectedIndex = 2;
+            }
+            else if (totalSeconds >= 60 && totalSeconds % 60 == 0)
+            {
+                valueBox.Text = (totalSeconds / 60).ToString();
+                unitCombo.SelectedIndex = 1;
+            }
+            else
+            {
+                valueBox.Text = totalSeconds.ToString();
+                unitCombo.SelectedIndex = 0;
+            }
+        }
+
         
         public enum ClickType
         {
@@ -207,6 +247,9 @@ namespace PowerfulWizard
             countdownTimer.Tick += OnCountdownTimerTick;
             movementTimer = new DispatcherTimer();
             movementTimer.Tick += OnMovementTimerTick;
+            _timeRemainingTimer = new DispatcherTimer();
+            _timeRemainingTimer.Interval = TimeSpan.FromMilliseconds(500);
+            _timeRemainingTimer.Tick += OnTimeRemainingTimerTick;
             
             // Initialize sequence runner
             sequenceRunner = new SequenceRunner();
@@ -326,6 +369,23 @@ namespace PowerfulWizard
             
             // Initialize PlaybackSpeedComboBox (default to 1.0x)
             PlaybackSpeedComboBox.SelectedIndex = 1;
+            
+            try
+            {
+                AutoClickRunTimeLimitCheckBox.IsChecked = bool.TryParse(ConfigurationManager.AppSettings["AutoClickRunTimeLimitEnabled"], out bool rtEnabled) && rtEnabled;
+                SetRunTimeInputs(AutoClickRunTimeValueInput, AutoClickRunTimeUnitComboBox,
+                    int.TryParse(ConfigurationManager.AppSettings["AutoClickRunTimeSeconds"], out int acRt) ? acRt : 60);
+                RecordingRunTimeLimitCheckBox.IsChecked = bool.TryParse(ConfigurationManager.AppSettings["RecordingRunTimeLimitEnabled"], out bool recRtEnabled) && recRtEnabled;
+                SetRunTimeInputs(RecordingRunTimeValueInput, RecordingRunTimeUnitComboBox,
+                    int.TryParse(ConfigurationManager.AppSettings["RecordingRunTimeSeconds"], out int recRt) ? recRt : 60);
+            }
+            catch
+            {
+                AutoClickRunTimeLimitCheckBox.IsChecked = false;
+                SetRunTimeInputs(AutoClickRunTimeValueInput, AutoClickRunTimeUnitComboBox, 60);
+                RecordingRunTimeLimitCheckBox.IsChecked = false;
+                SetRunTimeInputs(RecordingRunTimeValueInput, RecordingRunTimeUnitComboBox, 60);
+            }
             
             // Register hotkeys and setup hooks
             IntPtr hWnd = new WindowInteropHelper(this).Handle;
@@ -857,6 +917,14 @@ namespace PowerfulWizard
                 {
                     config.AppSettings.Settings.Add("CustomMovementSpeed", CustomSpeedInput.Text);
                 }
+                config.AppSettings.Settings.Remove("AutoClickRunTimeLimitEnabled");
+                config.AppSettings.Settings.Remove("AutoClickRunTimeSeconds");
+                config.AppSettings.Settings.Add("AutoClickRunTimeLimitEnabled", (AutoClickRunTimeLimitCheckBox?.IsChecked == true).ToString());
+                config.AppSettings.Settings.Add("AutoClickRunTimeSeconds", GetAutoClickRunTimeTotalSeconds().ToString());
+                config.AppSettings.Settings.Remove("RecordingRunTimeLimitEnabled");
+                config.AppSettings.Settings.Remove("RecordingRunTimeSeconds");
+                config.AppSettings.Settings.Add("RecordingRunTimeLimitEnabled", (RecordingRunTimeLimitCheckBox?.IsChecked == true).ToString());
+                config.AppSettings.Settings.Add("RecordingRunTimeSeconds", GetRecordingRunTimeTotalSeconds().ToString());
                 
                 config.Save(ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection("appSettings");
@@ -876,10 +944,20 @@ namespace PowerfulWizard
                     MessageBox.Show("Please configure a sequence with at least one step.", "No Sequence");
                     return;
                 }
+                if (currentSequence.RunTimeLimitEnabled && currentSequence.RunTimeSeconds < 1)
+                {
+                    MessageBox.Show("Please enter a valid run time (≥1 sec) when limit is enabled.", "Invalid Input");
+                    return;
+                }
                 
                 StartButton.IsEnabled = false;
                 StopButton.IsEnabled = true;
+                _sequenceRunStartUtc = DateTime.UtcNow;
+                _sequenceRunLimitSeconds = currentSequence.RunTimeLimitEnabled && currentSequence.RunTimeSeconds >= 1
+                    ? currentSequence.RunTimeSeconds : 0;
                 sequenceRunner.StartSequence(currentSequence);
+                if (_sequenceRunLimitSeconds > 0)
+                    _timeRemainingTimer?.Start();
             }
             else
             {
@@ -888,6 +966,12 @@ namespace PowerfulWizard
                     if (TargetModeComboBox.SelectedIndex == 1 && (clickArea.Width <= 0 || clickArea.Height <= 0)) // Click Area mode
                     {
                         MessageBox.Show("Please set a valid click area.", "Invalid Click Area");
+                        return;
+                    }
+                    var autoClickRunTime = GetAutoClickRunTimeTotalSeconds();
+                    if (AutoClickRunTimeLimitCheckBox.IsChecked == true && autoClickRunTime < 1)
+                    {
+                        MessageBox.Show("Please enter a valid run time (≥1 sec) when limit is enabled.", "Invalid Input");
                         return;
                     }
                     
@@ -900,10 +984,13 @@ namespace PowerfulWizard
                     StartButton.IsEnabled = false;
                     StopButton.IsEnabled = true;
                     StatusLabel.Content = "Status: Running";
+                    _autoClickRunStartUtc = DateTime.UtcNow;
                     nextClickTime = DateTime.Now.AddMilliseconds(interval);
                     timer.Interval = TimeSpan.FromMilliseconds(interval);
                     timer.Start();
                     countdownTimer.Start();
+                    if (AutoClickRunTimeLimitCheckBox.IsChecked == true && autoClickRunTime >= 1)
+                        _timeRemainingTimer?.Start();
                     if (overlayWindow != null)
                     {
                         overlayWindow.SetRunning(true);
@@ -918,6 +1005,8 @@ namespace PowerfulWizard
 
         private void OnStopButtonClick(object? sender, EventArgs e)
         {
+            _timeRemainingTimer?.Stop();
+            TimeRemainingLabel.Content = "Time remaining: --";
             if (isSequenceMode)
             {
                 sequenceRunner.StopSequence();
@@ -963,6 +1052,8 @@ namespace PowerfulWizard
                 timer.Stop();
                 countdownTimer.Stop();
                 movementTimer.Stop();
+                _timeRemainingTimer?.Stop();
+                TimeRemainingLabel.Content = "Time remaining: --";
                 StartButton.IsEnabled = true;
                 StopButton.IsEnabled = false;
                 StatusLabel.Content = "Status: Stopped";
@@ -976,10 +1067,41 @@ namespace PowerfulWizard
             }
         }
 
+        private void OnTimeRemainingTimerTick(object? sender, EventArgs e)
+        {
+            if (sequenceRunner.IsRunning && _sequenceRunLimitSeconds > 0)
+            {
+                var elapsed = (DateTime.UtcNow - _sequenceRunStartUtc).TotalSeconds;
+                var remaining = Math.Max(0, _sequenceRunLimitSeconds - elapsed);
+                TimeRemainingLabel.Content = $"Time remaining: {remaining:F1} sec";
+            }
+            else if (timer.IsEnabled && AutoClickRunTimeLimitCheckBox.IsChecked == true)
+            {
+                var limit = GetAutoClickRunTimeTotalSeconds();
+                if (limit >= 1)
+                {
+                    var elapsed = (DateTime.UtcNow - _autoClickRunStartUtc).TotalSeconds;
+                    var remaining = Math.Max(0, limit - elapsed);
+                    TimeRemainingLabel.Content = $"Time remaining: {remaining:F1} sec";
+                }
+            }
+        }
+
         private void OnCountdownTimerTick(object? sender, EventArgs e)
         {
             if (timer.IsEnabled)
             {
+                var runTimeSec = GetAutoClickRunTimeTotalSeconds();
+                if (AutoClickRunTimeLimitCheckBox.IsChecked == true && runTimeSec >= 1)
+                {
+                    var elapsedSeconds = (DateTime.UtcNow - _autoClickRunStartUtc).TotalSeconds;
+                    if (elapsedSeconds >= runTimeSec)
+                    {
+                        OnStopButtonClick(this, new RoutedEventArgs());
+                        StatusLabel.Content = "Status: Stopped (time limit)";
+                        return;
+                    }
+                }
                 double msRemaining = (nextClickTime - DateTime.Now).TotalMilliseconds;
                 if (msRemaining > 0)
                 {
@@ -1312,7 +1434,10 @@ namespace PowerfulWizard
         {
             Dispatcher.Invoke(() =>
             {
-                StatusLabel.Content = $"Status: Sequence Completed - {e.TotalLoops} loops, {e.TotalSteps} steps";
+                _timeRemainingTimer?.Stop();
+                TimeRemainingLabel.Content = "Time remaining: --";
+                var reason = e.StoppedDueToTimeLimit ? " (time limit)" : "";
+                StatusLabel.Content = $"Status: Sequence Completed{reason} - {e.TotalLoops} loops, {e.TotalSteps} steps";
                 StartButton.IsEnabled = true;
                 StopButton.IsEnabled = false;
                 StartButton.Content = "Start Sequence"; // Keep sequence mode UI
@@ -1457,7 +1582,18 @@ namespace PowerfulWizard
             }
             else if (currentRecording != null)
             {
-                mouseRecordingService.StartPlayback(currentRecording, currentPlaybackSpeed);
+                int? maxRunTime = null;
+                var recRunTime = GetRecordingRunTimeTotalSeconds();
+                if (RecordingRunTimeLimitCheckBox.IsChecked == true && recRunTime >= 1)
+                {
+                    maxRunTime = recRunTime;
+                }
+                else if (RecordingRunTimeLimitCheckBox.IsChecked == true)
+                {
+                    MessageBox.Show("Please enter a valid run time (≥1 sec) when limit is enabled.", "Invalid Input");
+                    return;
+                }
+                mouseRecordingService.StartPlayback(currentRecording, currentPlaybackSpeed, maxRunTime);
             }
         }
         
