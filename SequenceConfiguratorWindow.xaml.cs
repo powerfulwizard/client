@@ -14,15 +14,15 @@ namespace PowerfulWizard
 {
     public partial class SequenceConfiguratorWindow : Window
     {
-        private Sequence _currentSequence;
+        private Sequence _currentSequence = null!;
         private ConfiguratorAreaOverlayWindow? _areaOverlay;
+        private bool _suspendRunTimeSync;
 
         public Sequence CurrentSequence => _currentSequence;
 
         public SequenceConfiguratorWindow(Sequence? existingSequence = null)
         {
-            InitializeComponent();
-
+            // Must exist before InitializeComponent: RunTimeValueTextBox TextChanged fires during XAML load.
             if (existingSequence != null)
             {
                 _currentSequence = existingSequence;
@@ -39,6 +39,8 @@ namespace PowerfulWizard
                     CustomMovementDurationMs = 150
                 });
             }
+
+            InitializeComponent();
 
             DataContext = _currentSequence;
             StepsItemsControl.Focusable = false;
@@ -77,26 +79,35 @@ namespace PowerfulWizard
 
         private void SyncRunTimeInputsFromSequence()
         {
-            var total = Math.Max(0, _currentSequence.RunTimeSeconds);
-            if (total >= 3600 && total % 3600 == 0)
+            _suspendRunTimeSync = true;
+            try
             {
-                RunTimeValueTextBox.Text = (total / 3600).ToString();
-                RunTimeUnitComboBox.SelectedIndex = 2;
+                var total = Math.Max(0, _currentSequence.RunTimeSeconds);
+                if (total >= 3600 && total % 3600 == 0)
+                {
+                    RunTimeValueTextBox.Text = (total / 3600).ToString();
+                    RunTimeUnitComboBox.SelectedIndex = 2;
+                }
+                else if (total >= 60 && total % 60 == 0)
+                {
+                    RunTimeValueTextBox.Text = (total / 60).ToString();
+                    RunTimeUnitComboBox.SelectedIndex = 1;
+                }
+                else
+                {
+                    RunTimeValueTextBox.Text = total.ToString();
+                    RunTimeUnitComboBox.SelectedIndex = 0;
+                }
             }
-            else if (total >= 60 && total % 60 == 0)
+            finally
             {
-                RunTimeValueTextBox.Text = (total / 60).ToString();
-                RunTimeUnitComboBox.SelectedIndex = 1;
-            }
-            else
-            {
-                RunTimeValueTextBox.Text = total.ToString();
-                RunTimeUnitComboBox.SelectedIndex = 0;
+                _suspendRunTimeSync = false;
             }
         }
 
         private void SyncRunTimeToSequenceFromInputs()
         {
+            if (_suspendRunTimeSync) return;
             if (!int.TryParse(RunTimeValueTextBox.Text, out int value) || value < 0) return;
             var idx = RunTimeUnitComboBox.SelectedIndex;
             if (idx < 0) idx = 1;
@@ -105,7 +116,11 @@ namespace PowerfulWizard
 
         private void OnRunTimeInputChanged(object sender, TextChangedEventArgs e) => SyncRunTimeToSequenceFromInputs();
 
-        private void OnRunTimeUnitChanged(object sender, SelectionChangedEventArgs e) => SyncRunTimeToSequenceFromInputs();
+        private void OnRunTimeUnitChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suspendRunTimeSync) return;
+            SyncRunTimeToSequenceFromInputs();
+        }
         
         private void OnAddStepClick(object sender, RoutedEventArgs e)
         {
