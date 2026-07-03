@@ -1,4 +1,4 @@
-# Powerful Wizard Auto Clicker v2.7.3
+# Powerful Wizard Auto Clicker v2.7.4
 ![GitHub Release](https://img.shields.io/github/v/release/powerfulwizard/client?label=Version&color=mediumpurple) ![Downloads](https://img.shields.io/github/downloads/powerfulwizard/client/total?label=Downloads&color=mediumpurple) 
 
 A powerful and feature-rich auto clicker with advanced sequence support, visual overlays, smooth mouse trails, and mouse recording capabilities for Windows.
@@ -97,7 +97,11 @@ Join our Discord server for support, updates, and community discussion: [Join Di
 - **Click-Through Design**: Overlays won't interfere with target applications
 - **Responsible Use**: Intended for automation, testing, and accessibility purposes
 
-## 🆕 Version 2.7.3 Highlights
+## 🆕 Version 2.7.4 Highlights
+- 🐛 **Sequence editor crash fix**: Opening the Sequence Configurator no longer crashes on startup
+- ⏱️ **Run-time limit stability**: Sequence run-time inputs initialize safely before the UI loads, preventing null-reference errors
+
+## Version 2.7.3 Highlights
 - ⏱️ **Run Time Limit**: Configure max duration before auto-stop for auto-clicking, recording playback, and sequences
 - 🕐 **Value + unit selector**: Set run time with a number and dropdown (seconds, minutes, or hours)
 - 📊 **Time Remaining Counter**: Live countdown showing seconds left until auto-stop in the main stats area
