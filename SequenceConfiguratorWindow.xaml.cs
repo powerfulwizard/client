@@ -40,7 +40,16 @@ namespace PowerfulWizard
                 });
             }
 
-            InitializeComponent();
+            // RunTimeValueTextBox TextChanged can fire before RunTimeUnitComboBox is wired up.
+            _suspendRunTimeSync = true;
+            try
+            {
+                InitializeComponent();
+            }
+            finally
+            {
+                _suspendRunTimeSync = false;
+            }
 
             DataContext = _currentSequence;
             StepsItemsControl.Focusable = false;
@@ -79,6 +88,7 @@ namespace PowerfulWizard
 
         private void SyncRunTimeInputsFromSequence()
         {
+            if (RunTimeValueTextBox == null || RunTimeUnitComboBox == null) return;
             _suspendRunTimeSync = true;
             try
             {
@@ -108,6 +118,7 @@ namespace PowerfulWizard
         private void SyncRunTimeToSequenceFromInputs()
         {
             if (_suspendRunTimeSync) return;
+            if (RunTimeValueTextBox == null || RunTimeUnitComboBox == null) return;
             if (!int.TryParse(RunTimeValueTextBox.Text, out int value) || value < 0) return;
             var idx = RunTimeUnitComboBox.SelectedIndex;
             if (idx < 0) idx = 1;
